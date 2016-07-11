@@ -1,0 +1,26 @@
+{
+  "name": "skeletik",
+  "version": "0.1.0",
+  "description": "Tiny lexical analyzer",
+  "author": "RubaXa <ibnRubaXa@gmail.com>",
+  "license": "MIT",
+  "main": "skeletik.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "skeleton",
+    "lexer"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RubaXa/skeletik.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RubaXa/skeletik/issues"
+  },
+  "homepage": "https://github.com/RubaXa/skeletik#readme"
+}

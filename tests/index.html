@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>skeletik :: QUnit</title>
+	<link rel="stylesheet" href="//code.jquery.com/qunit/qunit-1.19.0.css">
+</head>
+<body>
+	<div id="qunit"></div>
+	<div id="qunit-fixture"></div>
+
+	<script src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.20/require.js"></script>
+
+	<script>
+		require.config({
+			packages: [{
+				name: 'skeletik',
+				location: '../',
+				main: 'skeletik.js'
+			}],
+			paths: {
+				'qunit': 'http://code.jquery.com/qunit/qunit-1.19.0',
+			}
+		});
+
+		require(['qunit'].concat([
+			'skeletik',
+			'expression',
+			'xml',
+			'xtpl'
+		].map(function (name) {
+			return '../tests/' + name + '.tests';
+		})), function (QUnit) {
+			QUnit.start();
+		});
+	</script>
+</body>
+</html>
