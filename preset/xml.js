@@ -47,7 +47,16 @@
 	}
 
 	function setBooleanAttr(lex, bone) {
-		bone.raw.attrs[lex.getToken()] = true;
+		bone.raw.attrs[lex.takeToken(+1).trim()] = true;
+	}
+
+	function flush(lex) {
+		lex.takeToken(0, +1);
+		return '';
+	}
+
+	function fail(lex, bone) {
+		lex.error(`Invalid character \`${lex.getChar()}\``, bone);
 	}
 
 	// Export parser
@@ -66,7 +75,7 @@
 			'$name_start': 'tag:name',
 			'/': 'tag:close',
 			'!': 'comment:cdata',
-			'': 'fail'
+			'': fail
 		},
 
 		'comment:cdata': {
@@ -84,7 +93,7 @@
 			'>': function (lex, parent) {
 				if (lex.prevCode === MINUS_CODE && lex.peek(-2) === MINUS_CODE) {
 					// debugger;
-					addComment(parent, lex.getToken(1, -2));
+					addComment(parent, lex.takeToken(0, 1).slice(4, -3));
 					return '';
 				} else {
 					return 'comment:value';
@@ -96,9 +105,13 @@
 		'cdata:await': {
 			'': function (lex) {
 				var token = lex.getToken();
-				if (token.length === 7) {
-					return token === '[CDATA[' ? 'cdata:value' : 'text';
+				
+				if (token === '<![CDATA[') {
+					return 'cdata:value';
+				} else if (token.length === 9) {
+					return 'text';
 				}
+
 				return 'cdata:await';
 			}
 		},
@@ -106,7 +119,7 @@
 		'cdata:value': {
 			'>': function (lex, parent) {
 				if (lex.prevCode === RIGHT_BRACE_CODE && lex.peek(-2) === RIGHT_BRACE_CODE) {
-					addCDATA(parent, lex.getToken(0, -2));
+					addCDATA(parent, lex.takeToken(0, +1).slice(9, -3));
 					return '';
 				} else {
 					return 'cdata:value';
@@ -116,8 +129,8 @@
 
 		'text': {
 			'<': function (lex, parent) {
-				addText(parent, lex.getToken());
-				return 'entry:open';
+				addText(parent, lex.takeToken());
+				return '';
 			},
 			'': 'text'
 		},
@@ -126,37 +139,42 @@
 			'$name': 'tag:name',
 
 			'/': function (lex, parent) {
-				addTag(parent, lex.getToken());
+				addTag(parent, lex.takeToken(+1));
+				lex.takeChar(); // "/"
 				return 'tag:end';
 			},
 
 			'>': function (lex, parent) {
-				return [addTag(parent, lex.getToken()), ''];
+				var name = lex.takeToken(+1);
+				lex.takeChar();
+				return [addTag(parent, name), ''];
 			},
 
 			'$ws': function (lex, parent) {
-				return [addTag(parent, lex.getToken()), 'tag:attrs'];
+				return [addTag(parent, lex.takeToken(+1)), 'tag:attrs'];
 			}
 		},
 
 		'tag:close': {
 			'$name': 'tag:close',
 			'>': function (lex, bone) {
-				var name = lex.getToken(+1);
+				var name = lex.takeToken(+2);
 				var mustName = bone.raw && bone.raw.name;
 
 				if (mustName !== name) {
 					lex.error('Wrong closing tag "' + name + '", must be "' + mustName + '"', bone);
 				}
 
+				lex.takeChar(); // ">"
+
 				return [bone.parent, ''];
 			},
-			'': 'fail'
+			'': fail
 		},
 
 		'tag:end': {
-			'>': '',
-			'': 'fail'
+			'>': flush,
+			'': fail
 		},
 
 		'tag:attrs': {
@@ -165,8 +183,8 @@
 			'/': function (lex, bone) {
 				return [bone.parent, 'tag:end'];
 			},
-			'>': '',
-			'': 'fail'
+			'>': flush,
+			'': fail
 		},
 
 		'tag:attr': {
@@ -179,15 +197,17 @@
 
 			'/': function (lex, bone) {
 				setBooleanAttr(lex, bone);
+				lex.takeChar();
 				return [bone.parent, 'tag:end'];
 			},
 
 			'=': function (lex) {
-				_attr = lex.getToken();
+				_attr = lex.takeToken(+1).trim();
+				lex.takeChar(); // "="
 				return 'tag:attr:value:await';
 			},
 
-			'': 'fail'
+			'': fail
 		},
 		
 		'tag:attr:value:await': {
@@ -195,7 +215,7 @@
 				_slashes = 0;
 				return 'tag:attr:value:read';
 			},
-			'': 'fail'
+			'': fail
 		},
 
 		'tag:attr:value:read': {
@@ -207,7 +227,8 @@
 			'"': function (lex, bone) {
 				if (lex.code === QUOTE_CODE) { // chr: >"<
 					if (!(_slashes % 2)) {
-						bone.raw.attrs[_attr] = lex.getToken(+1, 0);
+						bone.raw.attrs[_attr] = lex.takeToken(+1, 0);
+						lex.takeChar();
 						return 'tag:attrs';
 					}
 				}
@@ -220,16 +241,10 @@
 				_slashes = 0;
 				return '->';
 			}
-		},
-
-		'fail': {
-			'': function (lex, bone) {
-				lex.error('Invalid character', bone, -1);
-			}
 		}
 	}, {
 		onend: function (lex, bone) {
-			addText(bone, lex.getToken(0, -1));
+			addText(bone, lex.takeToken(0, -1));
 
 			if (bone.type !== '#root') {
 				lex.error('Must be closed', bone);

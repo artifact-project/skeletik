@@ -21,7 +21,7 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 				assert.equal(html, 'ERROR', 'Этот тест должен проволиться!');
 			} catch (err) {
 				for (var key in rules) {
-					assert.equal(rules[key], err[key], '[ ' + html + ' ] ~ ' + key);
+					assert.equal(err[key], rules[key], '[ ' + html + ' ] ~ ' + key);
 				}
 			}
 		}
@@ -35,6 +35,7 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 	// <img/>
 	['', ' ', '    '].forEach(function (pad) {
 		var html = '<img' + pad + '/>';
+		
 		QUnit.test(html + 'x' + pad.length, function (assert) {
 			var frag = xmlParser(html);
 			assert.equal(frag.length, 1, 'root.length');

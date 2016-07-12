@@ -254,6 +254,7 @@
 
 				while (lex.idx < length) {
 					code = lex.input.charCodeAt(lex.idx);
+					// debugger;
 
 					lex.prevCode = lex.code;
 					lex.code = code;
@@ -289,7 +290,7 @@
 					if (code === 10 && (length - lex.idx) !== 1) {
 						emit("line");
 						lex.line++;
-						lex.column = 1;
+						lex.column = 0;
 						lex.indent = {tab: 0, space: 0};
 						calcIndent = true;
 					}
@@ -298,7 +299,9 @@
 						emit("start");
 						_state = state;
 						// lex.lastIdx = lex.idx;
-					} else if (!lex.taked) {
+					}
+					
+					if (!lex.taked) {
 						lex.idx++;
 						lex.column++;
 					}
