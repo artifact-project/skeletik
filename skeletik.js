@@ -263,7 +263,7 @@
 					// debugger;
 
 					if (options.onpeek !== void 0 && (options.onpeek(lex, bone) === false)) {
-						// lex.code = code = 10;
+						lex.code = code = 10;
 						exit = true;
 					}
 

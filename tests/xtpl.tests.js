@@ -289,8 +289,6 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.first.nodes[2].type, 'tag');
 		assert.deepEqual(frag.first.nodes[2].raw, {name: 'ul', attrs: {class: 'list'}});
 	});
-return;
-
 
 	QUnit.test('if', function (assert) {
 		function testMe(val, tpl, length) {
@@ -312,6 +310,7 @@ return;
 		testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
 		testMe('-8', 'if ( -8 ) {.foo}');
 	});
+return;
 
 	QUnit.test('if else', function (assert) {
 		// todo: Ошибки

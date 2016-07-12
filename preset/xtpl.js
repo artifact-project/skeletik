@@ -126,7 +126,7 @@
 	}
 
 	function parseJS(lex, stopper) {
-		var start = lex.idx + 1;
+		var start = lex.idx;
 		var end;
 		var code;
 
@@ -220,10 +220,10 @@
 					return [addEntry(parent, token), next];
 				}
 			}),
-			'(': next(function (lex, parent) {
+			'(': function (lex, parent) {
 				var token = lex.takeToken();
 				return KEYWORDS[token] ? [addKeyword(parent, token), 'keyword_' + token] : fail(lex, parent);
-			}),
+			},
 			'{': openOrCloseGroup,
 			'}': openOrCloseGroup,
 			'': fail
@@ -344,7 +344,9 @@
 
 		'keyword_if': {
 			'(': function (lex, bone) {
+				lex.takeChar();
 				bone.raw.attrs.test = parseJS(lex, CLOSE_PARENTHESIS_CODE);
+				lex.takeChar();
 				return 'keyword_end';
 			},
 			' ': '->',
