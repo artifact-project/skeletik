@@ -254,7 +254,6 @@
 
 				while (lex.idx < length) {
 					code = lex.input.charCodeAt(lex.idx);
-					// debugger;
 
 					lex.prevCode = lex.code;
 					lex.code = code;

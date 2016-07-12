@@ -191,7 +191,9 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	});
 
 	QUnit.test('a[href=".."] | link', function (assert) {
-		var frag = xtplParser('a[href=".."] | link');
+		var frag;
+		
+		frag = xtplParser('a[href=".."] | link');
 		assert.deepEqual(frag.length, 1);
 		assert.deepEqual(frag.first.raw, {name: 'a', attrs: {href: '..'}});
 		assert.deepEqual(frag.first.first.raw, {value: 'link'});
@@ -266,6 +268,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.nodes[0].nodes[2].raw, {name: 'em', attrs: {}});
 		assert.deepEqual(frag.nodes[1].raw, {name: 'span', attrs: {}});
 	});
+return;
 
 	QUnit.test('form', function (assert) {
 		var frag = xtplParser([
