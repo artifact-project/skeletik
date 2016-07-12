@@ -6,7 +6,19 @@ Tiny lexical analyzer
 
 
 ### Presets
- - javascript expression
+ - [XML](#xml)
+
+
+<a name="xml"></a>
+### XML preset
+
+```js
+const xmlParser = require('skeletik/preset/xml');
+console.log(xmlParser(`<div>
+	<h1>Hello world!</h1>
+	Bla-bla-bla...
+</div>`));
+```
 
 
 ### Usage
