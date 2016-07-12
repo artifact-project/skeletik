@@ -2,6 +2,8 @@ skeletik
 --------
 Tiny lexical analyzer
 
+# WARN: This is just a DRAFT!
+
 
 ### Presets
  - javascript expression
