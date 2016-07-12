@@ -7,6 +7,7 @@ Tiny lexical analyzer
 
 ### Presets
  - [XML](#xml)
+ - [XTPL](#xtpl)
 
 
 <a name="xml"></a>
@@ -15,11 +16,21 @@ Tiny lexical analyzer
 ```js
 const xmlParser = require('skeletik/preset/xml');
 console.log(xmlParser(`<div>
-	<h1>Hello world!</h1>
-	Bla-bla-bla...
+	<h1 class="title">Hello world!</h1>
+	<div class="text">Bla-bla-bla...</div>
 </div>`));
 ```
 
+<a name="xtpl"></a>
+### XTPL preset
+
+```js
+const xtplParser = require('skeletik/preset/xtpl');
+console.log(xtplParser(`div
+	h1.title | Hello world!
+	.text | Bla-bla-bla...
+`));
+```
 
 ### Usage
 
