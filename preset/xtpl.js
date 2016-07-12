@@ -365,15 +365,17 @@
 			},
 			' ': '->',
 			'': function (lex) {
-				var token = lex.getToken();
+				var token = lex.getToken(0, +1);
 
-				if (token === ' if') {
-					lex.rewind(-1);
+				if (lex.prevCode === OPEN_BRACE_CODE) {
+					lex.idx--; // wtf?
+					lex.lastIdx = lex.idx + 1;
+					return '';
+				} else if (token === 'if') {
 					return 'keyword_if';
-				} else if (' if'.substr(0, token.length) === token) {
+				} else if (token === '' || token === 'i') {
 					return '->';
 				} else {
-					lex.rewind(-2);
 					return 'keyword_end';
 				}
 			}

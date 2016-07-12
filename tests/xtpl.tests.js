@@ -310,7 +310,6 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
 		testMe('-8', 'if ( -8 ) {.foo}');
 	});
-return;
 
 	QUnit.test('if else', function (assert) {
 		// todo: Ошибки
@@ -337,9 +336,10 @@ return;
 			assert.deepEqual(frag.last.first.raw, {name: 'b', attrs: {class: 'bar'}});
 		}
 
-		testMe('if(1){.foo}else{b.bar}');
+		// testMe('if(1){.foo}else{b.bar}');
 		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
 	});
+return;
 
 	QUnit.test('for-in', function (assert) {
 		function testMe(tpl) {
