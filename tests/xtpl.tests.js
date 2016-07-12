@@ -268,7 +268,6 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.nodes[0].nodes[2].raw, {name: 'em', attrs: {}});
 		assert.deepEqual(frag.nodes[1].raw, {name: 'span', attrs: {}});
 	});
-return;
 
 	QUnit.test('form', function (assert) {
 		var frag = xtplParser([
@@ -290,6 +289,8 @@ return;
 		assert.deepEqual(frag.first.nodes[2].type, 'tag');
 		assert.deepEqual(frag.first.nodes[2].raw, {name: 'ul', attrs: {class: 'list'}});
 	});
+return;
+
 
 	QUnit.test('if', function (assert) {
 		function testMe(val, tpl, length) {
