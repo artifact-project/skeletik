@@ -40,10 +40,9 @@
 			return this;
 		},
 
-		takeToken: function (offestLeft, offestRight) {
-			var token = this.getToken(offestLeft, offestRight);
+		takeToken: function () {
+			var token = this.getToken();
 
-			this.idx += offestRight|0;
 			this.lastIdx += token.length;
 			this.taked = true;
 
@@ -188,10 +187,13 @@
 					name: stateName,
 					events: !!events,
 					rules: Object.keys(rules).map(function (chr) {
+						var clean = chr.replace(/^\*/, '$1');
+
 						return {
-							chr: chr,
-							code: chr.charCodeAt(0),
-							next: rules[chr]
+							chr: clean,
+							code: clean.charCodeAt(0),
+							next: rules[chr],
+							setLastIdx: chr === clean, 
 						};
 					})
 				});
@@ -207,6 +209,7 @@
 				var _state = '';
 				var length = lex.length;
 				var exit = false;
+				var setLastIdx;
 
 				this.vars();
 
@@ -258,9 +261,9 @@
 					lex.prevCode = lex.code;
 					lex.code = code;
 					lex.state = state;
-					lex.taked = false;
+					setLastIdx = true;
 
-					// debugger;
+					debugger;
 
 					if (options.onpeek !== void 0 && (options.onpeek(lex, bone) === false)) {
 						lex.code = code = 10;
@@ -294,16 +297,22 @@
 						calcIndent = true;
 					}
 
+					if (state.charCodeAt(0) === 42) { // "*"
+						state = state.substr(1);
+						setLastIdx = false;
+					}
+
 					if (state !== _state) {
 						emit("start");
 						_state = state;
-						// lex.lastIdx = lex.idx;
+
+						if (setLastIdx) {
+							lex.lastIdx = lex.idx + 1;
+						}
 					}
 					
-					if (!lex.taked) {
-						lex.idx++;
-						lex.column++;
-					}
+					lex.idx++;
+					lex.column++;
 				}
 
 				return bone;
@@ -325,6 +334,10 @@
 								code.push('if (ranges.' + rule.chr + '(code)) { // char: ' + chr);
 							} else {
 								code.push(rule.chr !== '' ? 'if (' + rule.code + ' === code) { // char: ' + chr : '{ // char: any');
+							}
+
+							if (!rule.setLastIdx) {
+								code.push('\tsetLastIdx = false;');
 							}
 
 							if (next === '->') {

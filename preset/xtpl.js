@@ -23,7 +23,7 @@
 	var PIPE_CODE = 124; // "|"
 	var SLASH_CODE = 47; // "/"
 	var QUOTE_CODE = 34; // >>"<<
-	var ASTERISK_CODE = 42;
+	var ASTERISK_CODE = 42; // "*"
 	var OPEN_BRACE_CODE = 123; // "{"
 	var OPEN_BRACKET_CODE = 91; // "["
 	var CLOSE_BRACKET_CODE = 93; // "]"

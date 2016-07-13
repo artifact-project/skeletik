@@ -47,12 +47,7 @@
 	}
 
 	function setBooleanAttr(lex, bone) {
-		bone.raw.attrs[lex.takeToken(+1).trim()] = true;
-	}
-
-	function flush(lex) {
-		lex.takeToken(0, +1);
-		return '';
+		bone.raw.attrs[lex.getToken()] = true;
 	}
 
 	function fail(lex, bone) {
@@ -72,7 +67,7 @@
 		},
 
 		'entry:open': {
-			'$name_start': 'tag:name',
+			'$name_start': '*tag:name',
 			'/': 'tag:close',
 			'!': 'comment:cdata',
 			'': fail
@@ -92,7 +87,6 @@
 		'comment:value': {
 			'>': function (lex, parent) {
 				if (lex.prevCode === MINUS_CODE && lex.peek(-2) === MINUS_CODE) {
-					// debugger;
 					addComment(parent, lex.takeToken(0, 1).slice(4, -3));
 					return '';
 				} else {
@@ -136,22 +130,20 @@
 		},
 
 		'tag:name': {
-			'$name': 'tag:name',
+			'$name': '->',
 
 			'/': function (lex, parent) {
-				addTag(parent, lex.takeToken(+1));
-				lex.takeChar(); // "/"
+				addTag(parent, lex.getToken());
 				return 'tag:end';
 			},
 
 			'>': function (lex, parent) {
-				var name = lex.takeToken(+1);
-				lex.takeChar();
+				var name = lex.getToken();
 				return [addTag(parent, name), ''];
 			},
 
 			'$ws': function (lex, parent) {
-				return [addTag(parent, lex.takeToken(+1)), 'tag:attrs'];
+				return [addTag(parent, lex.getToken()), '*tag:attrs'];
 			}
 		},
 
@@ -173,22 +165,22 @@
 		},
 
 		'tag:end': {
-			'>': flush,
+			'>': '',
 			'': fail
 		},
 
 		'tag:attrs': {
 			'$attr': 'tag:attr',
-			'$ws': 'tag:attrs',
+			'$ws': '->',
 			'/': function (lex, bone) {
 				return [bone.parent, 'tag:end'];
 			},
-			'>': flush,
+			'>': '',
 			'': fail
 		},
 
 		'tag:attr': {
-			'$attr': 'tag:attr',
+			'$attr': '->',
 
 			'$ws': function (lex, bone) {
 				setBooleanAttr(lex, bone);
@@ -197,13 +189,11 @@
 
 			'/': function (lex, bone) {
 				setBooleanAttr(lex, bone);
-				lex.takeChar();
 				return [bone.parent, 'tag:end'];
 			},
 
 			'=': function (lex) {
-				_attr = lex.takeToken(+1).trim();
-				lex.takeChar(); // "="
+				_attr = lex.getToken();
 				return 'tag:attr:value:await';
 			},
 
@@ -225,10 +215,9 @@
 			},
 
 			'"': function (lex, bone) {
-				if (lex.code === QUOTE_CODE) { // chr: >"<
+				if (lex.code === QUOTE_CODE) { // chr: "
 					if (!(_slashes % 2)) {
-						bone.raw.attrs[_attr] = lex.takeToken(+1, 0);
-						lex.takeChar();
+						bone.raw.attrs[_attr] = lex.getToken();
 						return 'tag:attrs';
 					}
 				}
@@ -244,7 +233,7 @@
 		}
 	}, {
 		onend: function (lex, bone) {
-			addText(bone, lex.takeToken(0, -1));
+			addText(bone, lex.getToken(0, -1));
 
 			if (bone.type !== '#root') {
 				lex.error('Must be closed', bone);
