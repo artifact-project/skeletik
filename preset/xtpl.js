@@ -10,6 +10,7 @@
 	}
 })(function (skeletik, expressionParser) {
 	'use strict';
+return;
 
 	var TAG_TYPE = 'tag';
 	var TEXT_TYPE = 'text';

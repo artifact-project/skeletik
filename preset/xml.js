@@ -47,7 +47,7 @@
 	}
 
 	function setBooleanAttr(lex, bone) {
-		bone.raw.attrs[lex.getToken()] = true;
+		bone.raw.attrs[lex.takeToken()] = true;
 	}
 
 	function fail(lex, bone) {
@@ -63,17 +63,17 @@
 	}, {
 		'': {
 			'<': 'entry:open',
-			'': 'text'
+			'': '!text'
 		},
 
 		'entry:open': {
-			'$name_start': '*tag:name',
+			'$name_start': '!tag:name',
 			'/': 'tag:close',
-			'!': 'comment:cdata',
+			'!': 'comment-or-cdata',
 			'': fail
 		},
 
-		'comment:cdata': {
+		'comment-or-cdata': {
 			'-': 'comment:await',
 			'[': 'cdata:await',
 			'': 'text'
@@ -87,36 +87,36 @@
 		'comment:value': {
 			'>': function (lex, parent) {
 				if (lex.prevCode === MINUS_CODE && lex.peek(-2) === MINUS_CODE) {
-					addComment(parent, lex.takeToken(0, 1).slice(4, -3));
+					addComment(parent, lex.takeToken().slice(0, -2));
 					return '';
 				} else {
-					return 'comment:value';
+					return '->';
 				}
 			},
-			'': 'comment:value'
+			'': '->'
 		},
 
 		'cdata:await': {
 			'': function (lex) {
 				var token = lex.getToken();
-				
-				if (token === '<![CDATA[') {
-					return 'cdata:value';
-				} else if (token.length === 9) {
+
+				if (token === 'CDATA[') {
+					return '!cdata:value';
+				} else if (token.length === 6) {
 					return 'text';
 				}
 
-				return 'cdata:await';
+				return '->';
 			}
 		},
 
 		'cdata:value': {
 			'>': function (lex, parent) {
 				if (lex.prevCode === RIGHT_BRACE_CODE && lex.peek(-2) === RIGHT_BRACE_CODE) {
-					addCDATA(parent, lex.takeToken(0, +1).slice(9, -3));
+					addCDATA(parent, lex.takeToken().slice(0, -2));
 					return '';
 				} else {
-					return 'cdata:value';
+					return '->';
 				}
 			}
 		},
@@ -124,40 +124,38 @@
 		'text': {
 			'<': function (lex, parent) {
 				addText(parent, lex.takeToken());
-				return '';
+				return 'entry:open';
 			},
-			'': 'text'
+			'': '->'
 		},
 
 		'tag:name': {
 			'$name': '->',
 
 			'/': function (lex, parent) {
-				addTag(parent, lex.getToken());
+				addTag(parent, lex.takeToken());
 				return 'tag:end';
 			},
 
 			'>': function (lex, parent) {
-				var name = lex.getToken();
+				var name = lex.takeToken();
 				return [addTag(parent, name), ''];
 			},
 
 			'$ws': function (lex, parent) {
-				return [addTag(parent, lex.getToken()), '*tag:attrs'];
+				return [addTag(parent, lex.takeToken()), 'tag:attrs'];
 			}
 		},
 
 		'tag:close': {
 			'$name': 'tag:close',
 			'>': function (lex, bone) {
-				var name = lex.takeToken(+2);
+				var name = lex.takeToken();
 				var mustName = bone.raw && bone.raw.name;
 
 				if (mustName !== name) {
 					lex.error('Wrong closing tag "' + name + '", must be "' + mustName + '"', bone);
 				}
-
-				lex.takeChar(); // ">"
 
 				return [bone.parent, ''];
 			},
@@ -170,7 +168,7 @@
 		},
 
 		'tag:attrs': {
-			'$attr': 'tag:attr',
+			'$attr': '!tag:attr',
 			'$ws': '->',
 			'/': function (lex, bone) {
 				return [bone.parent, 'tag:end'];
@@ -193,7 +191,7 @@
 			},
 
 			'=': function (lex) {
-				_attr = lex.getToken();
+				_attr = lex.takeToken();
 				return 'tag:attr:value:await';
 			},
 
@@ -217,7 +215,7 @@
 			'"': function (lex, bone) {
 				if (lex.code === QUOTE_CODE) { // chr: "
 					if (!(_slashes % 2)) {
-						bone.raw.attrs[_attr] = lex.getToken();
+						bone.raw.attrs[_attr] = lex.takeToken();
 						return 'tag:attrs';
 					}
 				}
@@ -233,10 +231,12 @@
 		}
 	}, {
 		onend: function (lex, bone) {
-			addText(bone, lex.getToken(0, -1));
+			if (lex.lastIdx < lex.length) {
+				addText(bone, lex.getToken(0, -1));
+			}
 
 			if (bone.type !== '#root') {
-				lex.error('Must be closed', bone);
+				lex.error('<' + bone.raw.name + '/> must be closed', bone);
 			}
 		}
 	});

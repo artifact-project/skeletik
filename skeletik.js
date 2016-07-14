@@ -40,23 +40,16 @@
 			return this;
 		},
 
-		takeToken: function () {
-			var token = this.getToken();
+		takeToken: function (offsetLeft) {
+			var token = this.getToken(offsetLeft);
 
-			this.lastIdx += token.length;
+			this.lastIdx = this.idx;
 			this.taked = true;
 
 			return token;
 		},
 
 		getChar: function () {
-			return String.fromCharCode(this.code);
-		},
-
-		takeChar: function () {
-			this.lastIdx = ++this.idx;
-			this.taked = true;
-
 			return String.fromCharCode(this.code);
 		},
 
@@ -187,13 +180,19 @@
 					name: stateName,
 					events: !!events,
 					rules: Object.keys(rules).map(function (chr) {
-						var clean = chr.replace(/^\*/, '$1');
+						var next = rules[chr];
+						var setLastIdx = true;
+
+						if (typeof next === 'string' && next.charAt(0) === '!') {
+							next = next.substr(1);
+							setLastIdx = '!';
+						}
 
 						return {
-							chr: clean,
-							code: clean.charCodeAt(0),
-							next: rules[chr],
-							setLastIdx: chr === clean, 
+							chr: chr,
+							code: chr.charCodeAt(0),
+							next: next,
+							setLastIdx: setLastIdx, 
 						};
 					})
 				});
@@ -220,19 +219,23 @@
 						if (result === '->') {
 							return;
 						} else if (result === '|->') {
-							lex.lastIdx = lex.idx;
-							return;
+							throw 'ERROR';
 						} else if (result === '<-') {
-							lex.idx--;
-							lex.column--;
+							throw 'ERROR';
 						} else if (result.length === 2 && !result.type) {
 							bone = result[0];
 							state = result[1];
-							return;
 						} else if (result.type) {
 							bone = result;
 						} else if (typeof result === 'string') {
 							state = result;
+						}
+
+						if (state !== _state) {
+							if (state.charAt(0) === '!') { // "+" todo: charCodeAt
+								state = state.substr(1);
+								setLastIdx = '!';
+							}
 							return;
 						}
 					}
@@ -261,9 +264,9 @@
 					lex.prevCode = lex.code;
 					lex.code = code;
 					lex.state = state;
-					setLastIdx = true;
+					setLastIdx = false;
 
-					debugger;
+					// debugger;
 
 					if (options.onpeek !== void 0 && (options.onpeek(lex, bone) === false)) {
 						lex.code = code = 10;
@@ -297,17 +300,16 @@
 						calcIndent = true;
 					}
 
-					if (state.charCodeAt(0) === 42) { // "*"
-						state = state.substr(1);
-						setLastIdx = false;
-					}
-
 					if (state !== _state) {
 						emit("start");
 						_state = state;
 
 						if (setLastIdx) {
-							lex.lastIdx = lex.idx + 1;
+							if (setLastIdx === '!') {
+								lex.lastIdx = lex.idx;
+							} else {
+								lex.lastIdx = lex.idx + 1;
+							}
 						}
 					}
 					
@@ -336,15 +338,14 @@
 								code.push(rule.chr !== '' ? 'if (' + rule.code + ' === code) { // char: ' + chr : '{ // char: any');
 							}
 
-							if (!rule.setLastIdx) {
-								code.push('\tsetLastIdx = false;');
+							if (rule.setLastIdx) {
+								code.push('\tsetLastIdx = ' + JSON.stringify(rule.setLastIdx) + ';');
 							}
 
 							if (next === '->') {
 								code.push('\tstate = _state;');
 							} else if (next === '|->') {
-								code.push('\tstate = _state;');
-								code.push('\tlex.lastIdx = lex.idx + 1;');
+								throw 'REMOVE THIS';
 							} else if (typeof next === 'function') {
 								code.push('\tdoIt(' + chr + ');');
 							} else {
@@ -372,7 +373,6 @@
 		}
 	};
 
-	// Export
 	var skeletik = function (ranges, spec, options) {
 		options = options || {};
 

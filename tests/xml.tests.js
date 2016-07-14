@@ -40,26 +40,8 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 				name: 'img',
 				attrs: {src: 'foo.gif'}
 			});
+			console.log(frag);
 		});
-	});
-return;
-
-	QUnit.test('errors', function (assert) {
-		function testMe(html, rules) {
-			try {
-				xmlParser(html);
-				assert.equal(html, 'ERROR', 'Этот тест должен проволиться!');
-			} catch (err) {
-				for (var key in rules) {
-					assert.equal(err[key], rules[key], '[ ' + html + ' ] ~ ' + key);
-				}
-			}
-		}
-
-		testMe('<b>', {details: '<b>', line: 1, message: 'Must be closed'});
-		testMe('\n--<b>', {details: '--<b>', line: 2});
-		testMe('\n--<b =', {details: '--<b =', line: 2, column: 6});
-		testMe('<b>\n  <i>\n</b>', {details: '</b>', line: 3, column: 4, message: 'Wrong closing tag \"b\", must be \"i\"'});
 	});
 
 	// <img src align/>
@@ -74,7 +56,7 @@ return;
 		});
 	});
 
-	// <input type checked/>
+	// <input type checked/> + text
 	['<input type="checkbox" checked/>!', '<input checked type="checkbox"/>!'].forEach(function (html) {
 		QUnit.test(html, function (assert) {
 			var frag = xmlParser(html);
@@ -129,7 +111,25 @@ return;
 		assert.deepEqual(frag.last.raw, {value: 'qux'});
 	});
 
-	// todo: не зактрытый комментарий
+	QUnit.test('errors', function (assert) {
+		function testMe(html, rules) {
+			try {
+				xmlParser(html);
+				assert.equal(html, 'ERROR', 'Этот тест должен проволиться!');
+			} catch (err) {
+				for (var key in rules) {
+					assert.equal(err[key], rules[key], '[ ' + html + ' ] ~ ' + key);
+				}
+			}
+		}
+
+		testMe('<b>', {details: '<b>', line: 1, message: '<b/> must be closed'});
+		testMe('\n--<b>', {details: '--<b>', line: 2});
+		testMe('\n--<b =', {details: '--<b =', line: 2, column: 6});
+		testMe('<b>\n  <i>\n</b>', {details: '</b>', line: 3, column: 4, message: 'Wrong closing tag \"b\", must be \"i\"'});
+	});
+
+	// todo: незактрытый комментарий
 	[['', ''], [' ', ''], ['', ' '], [' ', ' ']].forEach(function (pad) {
 		var value = pad[0] + 'foo' + pad[1];
 		var html = '<!--' + value + '-->';
@@ -143,7 +143,7 @@ return;
 		});
 	});
 
-	// todo: не закрытый cdata
+	// todo: незакрытая cdata
 	QUnit.test('<![CDATA[foo]]>', function (assert) {
 		var frag = xmlParser('<![CDATA[foo]]>');
 		assert.equal(frag.length, 1);

@@ -10,6 +10,7 @@
 	}
 })(function (skeletik) {
 	'use strict';
+return;
 
 	// Tokens
 	var T_ROOT = '#root';
