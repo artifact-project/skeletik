@@ -148,7 +148,7 @@
 		},
 
 		'tag:close': {
-			'$name': 'tag:close',
+			'$name': '->',
 			'>': function (lex, bone) {
 				var name = lex.takeToken();
 				var mustName = bone.raw && bone.raw.name;

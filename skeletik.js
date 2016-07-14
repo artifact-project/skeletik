@@ -31,8 +31,8 @@
 	Lexer.prototype = /** @lends Lexer# */{
 		constrcutor: Lexer,
 
-		getToken: function (offestLeft, offestRight) {
-			return this.input.substring(this.lastIdx + (offestLeft|0), this.idx + (offestRight|0));
+		getToken: function (leftOffset, rightOffset) {
+			return this.input.substring(this.lastIdx + (leftOffset|0), this.idx + (rightOffset|0));
 		},
 
 		save: function () {
@@ -40,8 +40,8 @@
 			return this;
 		},
 
-		takeToken: function (offsetLeft) {
-			var token = this.getToken(offsetLeft);
+		takeToken: function (leftOffset, rightOffset) {
+			var token = this.getToken(leftOffset, rightOffset);
 
 			this.lastIdx = this.idx;
 			this.taked = true;
@@ -216,7 +216,8 @@
 					var result = spec[state][chr](lex, bone);
 
 					if (result !== void 0) {
-						if (result === '->') {
+						if (result === '->' || result === '-->') {
+							setLastIdx = (result === '-->');
 							return;
 						} else if (result === '|->') {
 							throw 'ERROR';
@@ -227,6 +228,8 @@
 							state = result[1];
 						} else if (result.type) {
 							bone = result;
+							state = '';
+							return;
 						} else if (typeof result === 'string') {
 							state = result;
 						}
@@ -236,8 +239,9 @@
 								state = state.substr(1);
 								setLastIdx = '!';
 							}
-							return;
 						}
+
+						return;
 					}
 
 					state = '';
@@ -303,13 +307,13 @@
 					if (state !== _state) {
 						emit("start");
 						_state = state;
+					}
 
-						if (setLastIdx) {
-							if (setLastIdx === '!') {
-								lex.lastIdx = lex.idx;
-							} else {
-								lex.lastIdx = lex.idx + 1;
-							}
+					if (setLastIdx) {
+						if (setLastIdx === '!') {
+							lex.lastIdx = lex.idx;
+						} else {
+							lex.lastIdx = lex.idx + 1;
 						}
 					}
 					
@@ -338,18 +342,21 @@
 								code.push(rule.chr !== '' ? 'if (' + rule.code + ' === code) { // char: ' + chr : '{ // char: any');
 							}
 
-							if (rule.setLastIdx) {
-								code.push('\tsetLastIdx = ' + JSON.stringify(rule.setLastIdx) + ';');
-							}
-
-							if (next === '->') {
+							if (next === '->' || state === '-->') {
 								code.push('\tstate = _state;');
-							} else if (next === '|->') {
-								throw 'REMOVE THIS';
-							} else if (typeof next === 'function') {
-								code.push('\tdoIt(' + chr + ');');
+								(state === '-->') && code.push('\tsetLastIdx = true;');
 							} else {
-								code.push('\tstate = ' + _this._states[next] + ';');
+								if (rule.setLastIdx) {
+									code.push('\tsetLastIdx = ' + JSON.stringify(rule.setLastIdx) + ';');
+								}
+
+								if (next === '|->') {
+									throw 'REMOVE THIS';
+								} else if (typeof next === 'function') {
+									code.push('\tdoIt(' + chr + ');');
+								} else {
+									code.push('\tstate = ' + _this._states[next] + ';');
+								}
 							}
 
 							code.push('}');

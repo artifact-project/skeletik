@@ -10,7 +10,6 @@
 	}
 })(function (skeletik, expressionParser) {
 	'use strict';
-return;
 
 	var TAG_TYPE = 'tag';
 	var TEXT_TYPE = 'text';
@@ -104,13 +103,11 @@ return;
 	}
 
 	function markAsGroup(lex, bone) {
-		lex.takeChar();
 		bone.group = true;
 		return '';
 	}
 
 	function closeGroup(lex, bone) {
-		lex.takeChar();
 		return closeEntry(bone, true);
 	}
 
@@ -165,21 +162,6 @@ return;
 		return lex.input.substring(start, lex.idx + 1).trim();
 	}
 
-	function next(state) {
-		if (typeof state === 'string') {
-			return function (lex, bone) {
-				lex.takeChar();
-				return state;
-			};
-		} else {
-			return function (lex) {
-				var retVal = state.apply(this, arguments);
-				lex.takeChar();
-				return retVal;
-			};
-		}
-	}
-	
 	function fail(lex, bone) {
 		lex.error(`Invalid character: \`${lex.getChar()}\``, bone);
 	}
@@ -193,12 +175,12 @@ return;
 		'$attr': ['a-z', 'A-Z', '-', '_', ':', '@', '0-9']
 	}, {
 		'': {
-			'$name': 'entry',
-			'.': next(function (lex, parent) {
+			'$name': '!entry',
+			'.': function (lex, parent) {
 				return [addEntry(parent, 'div'), 'class_name'];
-			}),
+			},
 			'/': 'comment_await',
-			'|': next('text'),
+			'|': 'text',
 			'}': closeGroup,
 			'$ws': '->',
 			'': fail
@@ -206,9 +188,9 @@ return;
 
 		'entry': {
 			'$name': '->',
-			'$name_stopper': next(function (lex, parent) {
+			'$name_stopper': function (lex, parent) {
 				var code = lex.code;
-				var token = lex.takeToken().trim();
+				var token = lex.takeToken();
 
 				if (code === ENTER_CODE) {
 					return closeEntry(addEntry(parent, token));
@@ -220,7 +202,7 @@ return;
 					var next = NAME_STOPPER_NEXT_STATE[code] || NAME_STOPPER_NEXT_STATE[SPACE_CODE];
 					return [addEntry(parent, token), next];
 				}
-			}),
+			},
 			'(': function (lex, parent) {
 				var token = lex.takeToken();
 				return KEYWORDS[token] ? [addKeyword(parent, token), 'keyword_' + token] : fail(lex, parent);
@@ -231,10 +213,11 @@ return;
 		},
 
 		'class_name': {
-			'.': next(function (lex, bone) {
+			'.': function (lex, bone) {
 				addClassName(lex, bone);
-				return 'class_name';
-			}),
+				return '-->';
+			},
+			'[': 'inline_attr',
 			'}': function (lex, bone) {
 				addClassName(lex, bone);
 				return closeGroup(lex, bone);
@@ -249,9 +232,9 @@ return;
 		'entry_group': {
 			'{': markAsGroup,
 			'}': closeGroup,
-			'>': next(function (lex, bone) { bone.shorty = true; }),
-			'+': next(function (lex, bone) { return bone.parent; }),
-			'|': next('entry_text'),
+			'>': function (lex, bone) { bone.shorty = true; },
+			'+': function (lex, bone) { return bone.parent; },
+			'|': 'entry_text',
 			'/': function (lex, bone) {
 				return [closeEntry(bone), 'comment_await'];
 			},
@@ -263,14 +246,14 @@ return;
 		},
 
 		'inline_attr': {
-			']': next(function (lex, bone) {
+			']': function (lex, bone) {
 				setInlineAttr(lex, bone);
 				return lex.peek(+1) === OPEN_BRACKET_CODE ? 'inline_attr' : 'entry_group';
-			}),
-			'=': next(function (lex, bone) {
+			},
+			'=': function (lex, bone) {
 				setInlineAttr(lex, bone);
 				return lex.peek(+1) === QUOTE_CODE ? 'inline_attr_value' : fail(lex, bone);
-			}),
+			},
 			' ': fail,
 			'': '->'
 		},
@@ -278,47 +261,45 @@ return;
 		'inline_attr_value': {
 			'"': function (lex, bone) {
 				if (inlineAttrValueState && (lex.prevCode !== SLASH_CODE)) {
-					setAttr(bone, inlineAttrName, lex.takeToken(+1), true);
-
-					if (lex.peek(+1) === CLOSE_BRACKET_CODE) {
-						lex.takeChar();
-						lex.takeChar();
-						return 'inline_attr_next';
-					} else {
-						return fail(lex, bone);
-					}
+					setAttr(bone, inlineAttrName, lex.takeToken(1), true);
+					return 'inline_attr_value_end';
 				} else {
 					inlineAttrValueState = 1;
 				}
 
-				return 'inline_attr_value';
+				return '->';
 			},
 			'\n': fail,
 			'': '->'
 		},
 
+		'inline_attr_value_end': {
+			']': 'inline_attr_next',
+			'': fail
+		},
+
 		'inline_attr_next': {
-			'[': next('inline_attr'),
+			'[': 'inline_attr',
 			'{': markAsGroup,
 			'}': closeGroup,
 			'\n': function (lex, bone) {
 				return closeEntry(bone);
 			},
-			' ': next('entry_group'),
+			' ': 'entry_group',
 			'': fail
 		},
 
 		'comment_await': {
-			'*': next('multi_comment'),
-			'/': next('comment'),
+			'*': 'multi_comment',
+			'/': 'comment',
 			'': fail
 		},
 
 		'entry_text': {
-			'\n': next(function (lex, bone) {
+			'\n': function (lex, bone) {
 				addText(bone, lex.takeToken());
 				return closeEntry(bone);
-			})
+			}
 		},
 
 		'comment': {
@@ -330,7 +311,7 @@ return;
 		'multi_comment': {
 			'/': function (lex, parent) {
 				if (lex.prevCode === ASTERISK_CODE) {
-					addComment(parent, lex.takeToken(0, +1).slice(0, -2));
+					addComment(parent, lex.takeToken(0, -1));
 				} else {
 					return '->';
 				}
@@ -338,16 +319,14 @@ return;
 		},
 
 		'text': {
-			'\n': next(function (lex, parent) {
-				addText(parent, lex.takeToken(+1));
-			})
+			'\n': function (lex, parent) {
+				addText(parent, lex.takeToken());
+			}
 		},
 
 		'keyword_if': {
 			'(': function (lex, bone) {
-				lex.takeChar();
 				bone.raw.attrs.test = parseJS(lex, CLOSE_PARENTHESIS_CODE);
-				lex.takeChar();
 				return 'keyword_end';
 			},
 			' ': '->',
@@ -391,7 +370,6 @@ return;
 		},
 
 		'keyword_for_data': {
-			' ': '|->',
 			'': function (lex, bone) {
 				var token = lex.getToken(0, +1).trim();
 

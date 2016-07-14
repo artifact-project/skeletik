@@ -3,7 +3,7 @@
 define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	'use strict';
 
-	QUnit.module('xtpl');
+	QUnit.module('skeletik:xtpl');
 
 	QUnit.test('| foo-bar', function (assert) {
 		var frag = xtplParser('| foo-bar');
@@ -189,6 +189,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.length, 1);
 		assert.deepEqual(frag.first.raw, {name: 'input', attrs: {type: 'radio', checked: true}});
 	});
+return;
 
 	QUnit.test('a[href=".."] | link', function (assert) {
 		var frag;
@@ -339,7 +340,6 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		// testMe('if(1){.foo}else{b.bar}');
 		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
 	});
-return;
 
 	QUnit.test('for-in', function (assert) {
 		function testMe(tpl) {
