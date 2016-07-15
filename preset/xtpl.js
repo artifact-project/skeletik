@@ -41,12 +41,10 @@
 	NAME_STOPPER_NEXT_STATE[SPACE_CODE] = 'entry_group';
 	NAME_STOPPER_NEXT_STATE[OPEN_BRACKET_CODE] = 'inline_attr';
 
-	var inlineAttrName;
-	var inlineAttrValueState;
-
 	var TAB_MODE = 'tab';
 	var SPACE_MODE = 'space';
 
+	var inlineAttrName;
 	var indentMode;
 	var indentSize;
 	var prevIndent;
@@ -72,18 +70,19 @@
 		return add(parent, KEYWORD_TYPE, {name: name, attrs: {}});
 	}
 
-	function setAttr(bone, name, value, force) {
+	function setAttr(bone, name, value, glue) {
 		var curValue = bone.raw.attrs[name];
-		bone.raw.attrs[name] = force ? value : (curValue ? curValue + ' ' : '') + value;
+		var newValue = arguments.length === 4 ? (curValue ? curValue + glue : '') + value : value;
+
+		bone.raw.attrs[name] = newValue;
 	}
 
 	function addClassName(lex, bone) {
-		setAttr(bone, 'class', lex.takeToken());
+		setAttr(bone, 'class', lex.takeToken(), ' ');
 	}
 
 	function setInlineAttr(lex, bone) {
 		inlineAttrName = lex.takeToken();
-		inlineAttrValueState = 0;
 		!inlineAttrName && lex.error('Empty attribute name', bone);
 		bone.raw.attrs[inlineAttrName] = true;
 	}
@@ -252,19 +251,22 @@
 			},
 			'=': function (lex, bone) {
 				setInlineAttr(lex, bone);
-				return lex.peek(+1) === QUOTE_CODE ? 'inline_attr_value' : fail(lex, bone);
+				return 'inline_attr_value_await';
 			},
-			' ': fail,
+			'$ws': fail,
 			'': '->'
+		},
+
+		'inline_attr_value_await': {
+			'"': 'inline_attr_value',
+			'': fail
 		},
 
 		'inline_attr_value': {
 			'"': function (lex, bone) {
-				if (inlineAttrValueState && (lex.prevCode !== SLASH_CODE)) {
-					setAttr(bone, inlineAttrName, lex.takeToken(1), true);
+				if (lex.prevCode !== SLASH_CODE) {
+					setAttr(bone, inlineAttrName, lex.takeToken());
 					return 'inline_attr_value_end';
-				} else {
-					inlineAttrValueState = 1;
 				}
 
 				return '->';

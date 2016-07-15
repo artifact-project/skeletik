@@ -189,7 +189,6 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.length, 1);
 		assert.deepEqual(frag.first.raw, {name: 'input', attrs: {type: 'radio', checked: true}});
 	});
-return;
 
 	QUnit.test('a[href=".."] | link', function (assert) {
 		var frag;
@@ -290,6 +289,7 @@ return;
 		assert.deepEqual(frag.first.nodes[2].type, 'tag');
 		assert.deepEqual(frag.first.nodes[2].raw, {name: 'ul', attrs: {class: 'list'}});
 	});
+return;
 
 	QUnit.test('if', function (assert) {
 		function testMe(val, tpl, length) {
@@ -307,9 +307,9 @@ return;
 		}
 
 		testMe('.5', 'if(.5){.foo}');
-		testMe('true', 'if (true) {.foo}');
-		testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
-		testMe('-8', 'if ( -8 ) {.foo}');
+		// testMe('true', 'if (true) {.foo}');
+		// testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
+		// testMe('-8', 'if ( -8 ) {.foo}');
 	});
 
 	QUnit.test('if else', function (assert) {
