@@ -53,6 +53,11 @@
 			return String.fromCharCode(this.code);
 		},
 
+		takeChar: function () {
+			this.lastIdx = this.idx;
+			return String.fromCharCode(this.code); // todo: vs. charAt()
+		},
+
 		peek: function (offset) {
 			return offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset);
 		},
@@ -208,21 +213,19 @@
 				var _state = '';
 				var length = lex.length;
 				var exit = false;
-				var setLastIdx;
+				var setLastIdx; // todo: rename to `cursorMode`
 
 				this.vars();
 
 				function doIt(chr) {
 					var result = spec[state][chr](lex, bone);
 
-					if (result !== void 0) {
+					if (result == null) {
+						state = '';
+					} else {
 						if (result === '->' || result === '-->') {
 							setLastIdx = (result === '-->');
 							return;
-						} else if (result === '|->') {
-							throw 'ERROR';
-						} else if (result === '<-') {
-							throw 'ERROR';
 						} else if (result.length === 2 && !result.type) {
 							bone = result[0];
 							state = result[1];
@@ -235,16 +238,13 @@
 						}
 
 						if (state !== _state) {
-							if (state.charAt(0) === '!') { // "+" todo: charCodeAt
+							var mode = state.charAt(0); // "+" todo: charCodeAt
+							if (mode === '!' || mode === '>') {
 								state = state.substr(1);
-								setLastIdx = '!';
+								setLastIdx = mode;
 							}
 						}
-
-						return;
 					}
-
-					state = '';
 				}
 
 				function emit(name) {
@@ -317,8 +317,10 @@
 						}
 					}
 					
-					lex.idx++;
-					lex.column++;
+					if (setLastIdx !== '>') {
+						lex.idx++;
+						lex.column++;
+					}
 				}
 
 				return bone;
@@ -342,7 +344,7 @@
 								code.push(rule.chr !== '' ? 'if (' + rule.code + ' === code) { // char: ' + chr : '{ // char: any');
 							}
 
-							if (next === '->' || state === '-->') {
+							if (next === '->' || next === '-->') {
 								code.push('\tstate = _state;');
 								(state === '-->') && code.push('\tsetLastIdx = true;');
 							} else {
@@ -350,9 +352,7 @@
 									code.push('\tsetLastIdx = ' + JSON.stringify(rule.setLastIdx) + ';');
 								}
 
-								if (next === '|->') {
-									throw 'REMOVE THIS';
-								} else if (typeof next === 'function') {
+								if (typeof next === 'function') {
 									code.push('\tdoIt(' + chr + ');');
 								} else {
 									code.push('\tstate = ' + _this._states[next] + ';');

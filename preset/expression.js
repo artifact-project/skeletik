@@ -10,7 +10,6 @@
 	}
 })(function (skeletik) {
 	'use strict';
-return;
 
 	// Tokens
 	var T_ROOT = '#root';
@@ -60,17 +59,22 @@ return;
 
 		if (rootType === T_REGEXP) {
 			lex.error('Invalid regular expression: missing /');
-		}
-		else if (rootType !== T_ROOT) {
+		} else if (rootType !== T_ROOT) {
 			if (rootType === T_STRING) {
-				lex.error('Unexpected token ILLEGAL', root);
+				lex.error('Invalid or unexpected token', root);
 			} else {
 				lex.error('Unexpected end of input', root);
 			}
-		}
-		else if (last) {
+		} else if (last) {
 			if (last.type === T_SIGN) {
-				if (last.prev || last.raw === '+' || last.raw === '/' || last.raw === '-' || last.raw === '!' || last.raw === '~') {
+				if (
+					(last.raw === '+') ||
+					(last.raw === '/') ||
+					(last.raw === '-') ||
+					(last.raw === '!') ||
+					(last.raw === '~') ||
+					(last.raw === '*' && last.prev)
+				) {
 					lex.error('Unexpected end of input', root);
 				} else {
 					lex.error('Unexpected token ' + last.raw, root);
@@ -103,7 +107,7 @@ return;
 
 	function openString(lex, bone) {
 		_code = lex.code;
-		_slashes = 1;
+		_slashes = 0;
 
 		return [add(lex, bone, T_STRING), 'string'];
 	}
@@ -144,11 +148,11 @@ return;
 			'(': openGroup,
 			')': closeGroup,
 
-			'\r': '|->',
-			'\n': '|->',
-			' ': '|->',
-			'\t': '|->',
-			';': '|->',
+			'\r': '-->',
+			'\n': '-->',
+			' ': '-->',
+			'\t': '-->',
+			';': '-->',
 
 			'/': function (lex, bone) {
 				if (bone.last && bone.last.type === T_SIGN || !bone.last && (!bone.parent || IS_GROUP[bone.type])) {
@@ -167,26 +171,28 @@ return;
 			'$id': 'id',
 
 			'$sign': function (lex, bone) {
+				var chr = lex.takeChar();
 				var last = bone.last;
 
 				if (last && lex.code === DOT_CODE && last.type === T_NUMBER) {
 					last.isFloat && lex.error('Unexpected end of input');
+					last.raw += chr;
 					last.isFloat = true;
 				} else {
-					add(lex, bone, T_SIGN, lex.takeChar());
+					add(lex, bone, T_SIGN, chr);
 				}
 			},
 
-			'$number': 'number',
+			'$number': '!number',
 
 			'': function (lex, bone) {
-				lex.error('Unexpected token ILLEGAL', bone);
+				lex.error('Invalid or unexpected token', bone);
 			}
 		},
 
 		'regexp': {
 			'/': function (lex, bone) {
-				bone.raw.source = lex.takeToken(0, 1).slice(0, -1);
+				bone.raw.source = lex.takeToken();
 				return bone.parent;
 			}
 		},
@@ -195,6 +201,7 @@ return;
 			'$id': 'id',
 			'': function (lex, bone) {
 				add(lex, bone, T_ID, lex.takeToken());
+				return '>';
 			}
 		},
 
@@ -213,6 +220,8 @@ return;
 				} else {
 					add(lex, bone, T_NUMBER, token);
 				}
+
+				return '>';
 			}
 		},
 
@@ -239,7 +248,7 @@ return;
 		'$body': ['a-z', 'A-Z', '_', '0-9']
 	}, {
 		'': {
-			' ': '|->',
+			' ': '-->',
 			'$start': 'body',
 			'': fail
 		},

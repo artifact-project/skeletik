@@ -9,7 +9,7 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 				var actual = null;
 				var expected = null;
 
-				if (debug) {
+				if (debug && debug !== 'trace') {
 					debugger;
 				}
 
@@ -25,6 +25,10 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 					if (!(err instanceof ReferenceError)) {
 						expected = err;
 					}
+				}
+
+				if (debug === 'trace') {
+					console.log(actual, expected);
 				}
 
 				if (actual === expected) {
@@ -44,14 +48,14 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 		function testMe(tpl, res) {
 			var frag = expressionParser(tpl);
 			assert.deepEqual(frag.length, 1);
+			assert.deepEqual(frag.first.type, 'number');
 			assert.deepEqual(frag.first.raw, res);
 		}
 
 		testMe('0', '0');
-		testMe('0.', '0');
+		testMe('0.', '0.');
 		testMe('.0', '.0');
 	});
-
 
 	QUnit.test('core', function (assert) {
 		var frag = expressionParser('+1 - 2.3');
@@ -87,7 +91,7 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 
 	testSyntax(
 		'string:quote',
-		['""', '"xy"', '"x\\"y']
+		['""', '"xy"', '"x\\"y"']
 	);
 
 	testSyntax(
@@ -96,23 +100,33 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 	);
 
 	testSyntax(
-		'Unexpected token ILLEGAL',
+		'Invalid or unexpected token',
 		['@', '#', "'", '"', '\\']
 	);
 
 	testSyntax(
 		'Unexpected end of input',
 		[
-			'~', '+', '-', '(', '{', '[', '()', '-()', '!',
-			'x/', 'x-', 'x*'
+			'~', '+', '-', '(', '{', '[', '!',
+			'x/', 'x-', 'x*', '""['
 		]
 	);
 
 	testSyntax(
+		'Unexpected token ) [PARENTHESIS]',
+		['()', '-()']
+	);
+
+	testSyntax(
+		'Unexpected token . [DOTS]',
+		['..']
+	)
+
+	testSyntax(
 		'Unexpected token',
 		[
-			',', '.', '..', '*', '&', '|', '^', ']', '}', ')', '%', '&', '=', '?', ':', '>', '<',
-			'[+]', '(+)', '""['
+			',', '.', , '*', '&', '|', '^', ']', '}', ')', '%', '&', '=', '?', ':', '>', '<',
+			'[+]', '(+)'
 		]
 	);
 
