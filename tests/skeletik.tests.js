@@ -16,14 +16,15 @@ define(['qunit', 'skeletik'], function (QUnit, skeletik) {
 			'$e': ['a', 'b']
 		}, {
 			'': {
-				'$e': 'expr',
+				'$e': '!expr',
 				'+': function (lex, bone) {
-					bone.add('#s', lex.getChar());
+					bone.add('#s', lex.takeChar());
 				}
 			},
 			'expr': {
 				'': function (lex, bone) {
-					bone.add('#e', lex.getToken());
+					bone.add('#e', lex.takeToken());
+					return '>';
 				}
 			}
 		});
@@ -31,9 +32,9 @@ define(['qunit', 'skeletik'], function (QUnit, skeletik) {
 		assert.deepEqual(JSON.stringify(parser('a + b'), null, 2), JSON.stringify({
 			type: '#root',
 			nodes: [
-				{type: '#e', raw: 'a'},
-				{type: '#s', raw: '+'},
-				{type: '#e', raw: 'b'}
+				{type: '#e', raw: 'a', nodes: []},
+				{type: '#s', raw: '+', nodes: []},
+				{type: '#e', raw: 'b', nodes: []}
 			]
 		}, null, 2));
 	});
