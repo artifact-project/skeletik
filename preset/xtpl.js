@@ -124,41 +124,39 @@
 
 	function parseJS(lex, stopper) {
 		var start = lex.idx;
-		var end;
-		var code;
+		var offset = 0;
 
 		// Валидируем выражение
 		expressionParser.capture(lex, {
 			onpeek: function (lex, bone) {
-				end = lex.idx;
-				code = lex.code;
-				return !(bone.type === '#root' && lex.prevCode === stopper);
+				offset = lex.code === stopper ? 0 : 1;
+				return !(bone.type === '#root' && (lex.code === stopper || lex.prevCode === stopper));
 			}
 		});
 
-		return lex.input.substring(start + 1, end - 1).trim();
+		return lex.input.substring(start + 1, lex.idx - offset).trim();
 	}
 
-	function parseJSArg(lex, skipFirstChar) {
-		var start = lex.idx + 1;
+	function parseJSArgName(lex) {
+		var start = lex.idx;
 		var trim = true;
 
-		skipFirstChar && lex.skip(1);
-
+		// Вылидируем имя аргумента
+		lex.idx++;
 		expressionParser.varName.capture(lex, {
 			onpeek: function (lex) {
-				if (trim && lex.code === SPACE_CODE) {
+				var code = lex.code;
+
+				if (trim && code === SPACE_CODE) {
 					return;
 				} else {
 					trim = false;
-					return !(lex.code === SPACE_CODE || lex.code === COMMA_CODE);
+					return !(code === SPACE_CODE || code === COMMA_CODE);
 				}
 			}
 		});
 
-		lex.rewind(-1);
-
-		return lex.input.substring(start, lex.idx + 1).trim();
+		return lex.input.substring(start + 1, lex.idx).trim();
 	}
 
 	function fail(lex, bone) {
@@ -349,7 +347,7 @@
 			'{': markAsGroup,
 			'': function (lex) {
 				var token = lex.getToken();
-debugger;
+
 				if (token === 'if') {
 					return '>keyword_if';
 				} else if (token === '' || token === 'i') {
@@ -361,8 +359,9 @@ debugger;
 		},
 
 		'keyword_for': {
+			'$ws': '->',
 			'(': function (lex, bone) {
-				bone.raw.attrs.as = parseJSArg(lex, true);
+				bone.raw.attrs.as = parseJSArgName(lex, true);
 				return 'keyword_for_data';
 			},
 			'': fail
@@ -370,9 +369,9 @@ debugger;
 
 		'keyword_for_data': {
 			'': function (lex, bone) {
-				var token = lex.getToken(0, +1).trim();
+				var token = lex.getToken();
 
-				if (token === 'i') {
+				if (token === '' || token === 'i') {
 					return '->';
 				} else if (token === 'in') {
 					bone.raw.attrs.data = parseJS(lex, CLOSE_PARENTHESIS_CODE);
