@@ -116,7 +116,7 @@
 
 		if (lex.code === OPEN_BRACE_CODE) {
 			markAsGroup(lex, nextParent);
-			return KEYWORDS[token] ? [nextParent, 'keyword_' + token] : nextParent;
+			return KEYWORDS[token] ? [nextParent, '>keyword_' + token] : nextParent;
 		} else {
 			return closeGroup(lex, nextParent);
 		}
@@ -127,16 +127,16 @@
 		var end;
 		var code;
 
+		// Валидируем выражение
 		expressionParser.capture(lex, {
 			onpeek: function (lex, bone) {
 				end = lex.idx;
 				code = lex.code;
-				return !(bone.type === '#root' && lex.code === stopper);
+				return !(bone.type === '#root' && lex.prevCode === stopper);
 			}
 		});
-		lex.code = code;
 
-		return lex.input.substring(start, end).trim();
+		return lex.input.substring(start + 1, end - 1).trim();
 	}
 
 	function parseJSArg(lex, skipFirstChar) {
@@ -196,7 +196,7 @@
 				} else if (code === SLASH_CODE) {
 					return [closeEntry(addEntry(parent, token)), 'comment_await'];
 				} else if (KEYWORDS[token]) {
-					return [addKeyword(parent, token), 'keyword_' + token];
+					return [addKeyword(parent, token), '>keyword_' + token];
 				} else {
 					var next = NAME_STOPPER_NEXT_STATE[code] || NAME_STOPPER_NEXT_STATE[SPACE_CODE];
 					return [addEntry(parent, token), next];
@@ -204,7 +204,7 @@
 			},
 			'(': function (lex, parent) {
 				var token = lex.takeToken();
-				return KEYWORDS[token] ? [addKeyword(parent, token), 'keyword_' + token] : fail(lex, parent);
+				return KEYWORDS[token] ? [addKeyword(parent, token), '>keyword_' + token] : fail(lex, parent);
 			},
 			'{': openOrCloseGroup,
 			'}': openOrCloseGroup,
@@ -329,7 +329,7 @@
 		'keyword_if': {
 			'(': function (lex, bone) {
 				bone.raw.attrs.test = parseJS(lex, CLOSE_PARENTHESIS_CODE);
-				return 'keyword_end';
+				return '>keyword_end';
 			},
 			' ': '->',
 			'': fail
@@ -346,19 +346,16 @@
 				}
 			},
 			' ': '->',
+			'{': markAsGroup,
 			'': function (lex) {
-				var token = lex.getToken(0, +1);
-
-				if (lex.prevCode === OPEN_BRACE_CODE) {
-					lex.idx--; // wtf?
-					lex.lastIdx = lex.idx + 1;
-					return '';
-				} else if (token === 'if') {
-					return 'keyword_if';
+				var token = lex.getToken();
+debugger;
+				if (token === 'if') {
+					return '>keyword_if';
 				} else if (token === '' || token === 'i') {
 					return '->';
 				} else {
-					return 'keyword_end';
+					return '>keyword_end';
 				}
 			}
 		},

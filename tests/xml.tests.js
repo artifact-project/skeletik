@@ -40,7 +40,6 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 				name: 'img',
 				attrs: {src: 'foo.gif'}
 			});
-			console.log(frag);
 		});
 	});
 

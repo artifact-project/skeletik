@@ -289,13 +289,12 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.first.nodes[2].type, 'tag');
 		assert.deepEqual(frag.first.nodes[2].raw, {name: 'ul', attrs: {class: 'list'}});
 	});
-return;
 
 	QUnit.test('if', function (assert) {
 		function testMe(val, tpl, length) {
 			var frag = xtplParser(tpl);
 
-			assert.deepEqual(frag.length, 1);
+			assert.deepEqual(frag.length, 1, tpl);
 			assert.deepEqual(frag.first.type, 'keyword');
 			assert.deepEqual(frag.first.raw, {name: 'if', attrs: {test: val}});
 			assert.deepEqual(frag.first.length, length || 1);
@@ -307,9 +306,9 @@ return;
 		}
 
 		testMe('.5', 'if(.5){.foo}');
-		// testMe('true', 'if (true) {.foo}');
-		// testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
-		// testMe('-8', 'if ( -8 ) {.foo}');
+		testMe('true', 'if (true) {.foo}');
+		testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
+		testMe('-8', 'if ( -8 ) {.foo}');
 	});
 
 	QUnit.test('if else', function (assert) {
@@ -317,7 +316,7 @@ return;
 		function testMe(tpl, elseIf) {
 			var frag = xtplParser(tpl);
 
-			assert.deepEqual(frag.length, 2 + !!elseIf);
+			assert.deepEqual(frag.length, 2 + !!elseIf, tpl);
 
 			assert.deepEqual(frag.first.type, 'keyword');
 			assert.deepEqual(frag.first.raw, {name: 'if', attrs: {test: '1'}});
@@ -337,9 +336,10 @@ return;
 			assert.deepEqual(frag.last.first.raw, {name: 'b', attrs: {class: 'bar'}});
 		}
 
-		// testMe('if(1){.foo}else{b.bar}');
+		testMe('if(1){.foo}else{b.bar}');
 		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
 	});
+return;
 
 	QUnit.test('for-in', function (assert) {
 		function testMe(tpl) {
