@@ -187,10 +187,11 @@
 					rules: Object.keys(rules).map(function (chr) {
 						var next = rules[chr];
 						var setLastIdx = true;
+						var mode = typeof next === 'string' && next.charAt(0);
 
-						if (typeof next === 'string' && next.charAt(0) === '!') {
+						if (mode === '!' || mode === '>') {
 							next = next.substr(1);
-							setLastIdx = '!';
+							setLastIdx = mode;
 						}
 
 						return {
@@ -270,8 +271,6 @@
 					lex.state = state;
 					setLastIdx = false;
 
-					// debugger;
-
 					if (options.onpeek !== void 0 && (options.onpeek(lex, bone) === false)) {
 						lex.code = code = 10;
 						exit = true;
@@ -309,7 +308,7 @@
 						_state = state;
 					}
 
-					if (setLastIdx) {
+					if (setLastIdx && setLastIdx !== '>') {
 						if (setLastIdx === '!') {
 							lex.lastIdx = lex.idx;
 						} else {

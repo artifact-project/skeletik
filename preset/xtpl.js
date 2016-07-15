@@ -169,7 +169,9 @@
 		'$name': ['a-z', 'A-Z', '-', '_', '0-9'],
 		'$var': ['a-z', 'A-Z', '_', '0-9'],
 		'$name_stopper': ['.', '|', ' ', '\n', '\t', '/', '['],
-		'$attr': ['a-z', 'A-Z', '-', '_', ':', '@', '0-9']
+		'$attr': ['a-z', 'A-Z', '-', '_', ':', '@', '0-9'],
+		'$var_name_start': ['_', 'a-z', 'A-Z'],
+		'$var_name_next': ['_', 'a-z', 'A-Z', '0-9']
 	}, {
 		'': {
 			'$name': '!entry',
@@ -346,7 +348,7 @@
 			' ': '->',
 			'{': markAsGroup,
 			'': function (lex) {
-				var token = lex.getToken();
+				var token = lex.getToken().trim();
 
 				if (token === 'if') {
 					return '>keyword_if';
@@ -359,17 +361,68 @@
 		},
 
 		'keyword_for': {
-			'$ws': '->',
-			'(': function (lex, bone) {
-				bone.raw.attrs.as = parseJSArgName(lex, true);
+			' ': '->',
+			'(': 'keyword_for_args',
+			'': fail
+		},
+
+		'keyword_for_args': {
+			' ': '->',
+			'$var_name_start': '!keyword_for_arg:as',
+			'[': 'keyword_for_await_arg:idx',
+			'': fail
+		},
+
+		'keyword_for_await_arg:idx': {
+			' ': '-->',
+			'$var_name_start': '!keyword_for_arg:idx'
+		},
+
+		'keyword_for_arg:idx': {
+			'$var_name_next': '->',
+			' ': '>keyword_for_arg:idx-await_comma',
+			',': '>keyword_for_arg:idx-await_comma',
+			'': fail,
+		},
+
+		'keyword_for_arg:idx-await_comma': {
+			' ': '->',
+			',': function (lex, bone) {
+				bone.raw.attrs.key = lex.takeToken().trim();
+				return 'keyword_for_arg:as-await';
+			},
+			'': fail
+		},
+
+		'keyword_for_arg:as-await': {
+			' ': '->',
+			'$var_name_start': '!keyword_for_arg:as',
+			'': 'fail'
+		},	
+
+		'keyword_for_arg:as': {
+			'$var_name_next': '->',
+			' ': function (lex, bone) {
+				bone.raw.attrs.as = lex.takeToken();
+				return bone.raw.attrs.key ? 'keyword_for_arg:as-await_brace' : 'keyword_for_data';
+			},
+			']': function (lex, bone) {
+				bone.raw.attrs.as = lex.takeToken();
 				return 'keyword_for_data';
 			},
 			'': fail
 		},
 
+		'keyword_for_arg:as-await_brace': {
+			' ': '->',
+			']': 'keyword_for_data',
+			'': fail
+		},
+
+
 		'keyword_for_data': {
 			'': function (lex, bone) {
-				var token = lex.getToken();
+				var token = lex.getToken().trim();
 
 				if (token === '' || token === 'i') {
 					return '->';
