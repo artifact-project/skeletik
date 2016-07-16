@@ -369,5 +369,6 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		}
 
 		testMe('for([idx, val] in [1,2]){.foo}');
+		testMe('for ( [ idx , val ] in [1,2] ) { .foo }');
 	});
 });

@@ -171,7 +171,7 @@
 			this._events = {};
 
 			Object.keys(spec).forEach(function (state) {
-				var stateName = 'state_' + state.replace(/[^a-z0-9]/g, '_');
+				var stateName = 'state_' + state.replace(/[^a-z0-9]/gi, '_');
 				var rules = spec[state];
 				var events = spec[state].__events;
 

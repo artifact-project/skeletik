@@ -25,6 +25,7 @@
 	var QUOTE_CODE = 34; // >>"<<
 	var ASTERISK_CODE = 42; // "*"
 	var OPEN_BRACE_CODE = 123; // "{"
+	var CLOSE_BRACE_CODE = 125; // "}"
 	var OPEN_BRACKET_CODE = 91; // "["
 	var CLOSE_BRACKET_CODE = 93; // "]"
 	var CLOSE_PARENTHESIS_CODE = 41; // ")"
@@ -34,6 +35,7 @@
 		'else': 1,
 		'for': 1
 	};
+	var _keyword;
 
 	var NAME_STOPPER_NEXT_STATE = {};
 	NAME_STOPPER_NEXT_STATE[DOT_CODE] = 'class_name';
@@ -112,11 +114,11 @@
 
 	function openOrCloseGroup(lex, parent) {
 		var token = lex.getToken();
-		var nextParent = KEYWORDS[token] ? addKeyword(parent, token) : addEntry(parent, token);
+		var nextParent = (KEYWORDS[token] ? addKeyword : addEntry)(parent, token);
 
 		if (lex.code === OPEN_BRACE_CODE) {
 			markAsGroup(lex, nextParent);
-			return KEYWORDS[token] ? [nextParent, '>keyword_' + token] : nextParent;
+			return KEYWORDS[token] ? [nextParent, parser.keyword.start(token)] : nextParent;
 		} else {
 			return closeGroup(lex, nextParent);
 		}
@@ -134,7 +136,7 @@
 			}
 		});
 
-		return lex.input.substring(start + 1, lex.idx - offset).trim();
+		return lex.input.substring(start, lex.idx - offset).trim();
 	}
 
 	function parseJSArgName(lex) {
@@ -163,8 +165,8 @@
 		lex.error(`Invalid character: \`${lex.getChar()}\``, bone);
 	}
 
-	// Export parser
-	return skeletik({
+	// Create parser
+	var parser = skeletik({
 		'$ws': [' ', '\t', '\n'],
 		'$name': ['a-z', 'A-Z', '-', '_', '0-9'],
 		'$name_stopper': ['.', '|', ' ', '\n', '\t', '/', '['],
@@ -195,7 +197,7 @@
 				} else if (code === SLASH_CODE) {
 					return [closeEntry(addEntry(parent, token)), 'comment_await'];
 				} else if (KEYWORDS[token]) {
-					return [addKeyword(parent, token), '>keyword_' + token];
+					return [addKeyword(parent, token), parser.keyword.start(token)];
 				} else {
 					var next = NAME_STOPPER_NEXT_STATE[code] || NAME_STOPPER_NEXT_STATE[SPACE_CODE];
 					return [addEntry(parent, token), next];
@@ -203,7 +205,7 @@
 			},
 			'(': function (lex, parent) {
 				var token = lex.takeToken();
-				return KEYWORDS[token] ? [addKeyword(parent, token), '>keyword_' + token] : fail(lex, parent);
+				return KEYWORDS[token] ? [addKeyword(parent, token), parser.keyword.start(token)] : fail(lex, parent);
 			},
 			'{': openOrCloseGroup,
 			'}': openOrCloseGroup,
@@ -325,120 +327,35 @@
 			}
 		},
 
-		'keyword_if': {
-			'(': function (lex, bone) {
-				bone.raw.attrs.test = parseJS(lex, CLOSE_PARENTHESIS_CODE);
-				return '>keyword_end';
-			},
-			' ': '->',
-			'': fail
-		},
-
-		'keyword_else': {
-			'__events': {
-				start: function (lex, bone) {
-					var raw = bone.prev.raw;
-
-					if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
-						lex.error('Unexpected token else', bone);
-					}
-				}
-			},
-			' ': '->',
-			'{': markAsGroup,
-			'': function (lex) {
-				var token = lex.getToken().trim();
-
-				if (token === 'if') {
-					return '>keyword_if';
-				} else if (token === '' || token === 'i') {
-					return '->';
-				} else {
-					return '>keyword_end';
-				}
-			}
-		},
-
-		'keyword_for': {
-			' ': '->',
-			'(': 'keyword_for_args',
-			'': fail
-		},
-
-		'keyword_for_args': {
-			' ': '->',
-			'$var_name_start': '!keyword_for_arg:as',
-			'[': 'keyword_for_await_arg:idx',
-			'': fail
-		},
-
-		'keyword_for_await_arg:idx': {
-			' ': '-->',
-			'$var_name_start': '!keyword_for_arg:idx'
-		},
-
-		'keyword_for_arg:idx': {
-			'$var_name_next': '->',
-			' ': '>keyword_for_arg:idx-await_comma',
-			',': '>keyword_for_arg:idx-await_comma',
-			'': fail,
-		},
-
-		'keyword_for_arg:idx-await_comma': {
-			' ': '->',
-			',': function (lex, bone) {
-				bone.raw.attrs.key = lex.takeToken().trim();
-				return 'keyword_for_arg:as-await';
-			},
-			'': fail
-		},
-
-		'keyword_for_arg:as-await': {
-			' ': '->',
-			'$var_name_start': '!keyword_for_arg:as',
-			'': 'fail'
-		},	
-
-		'keyword_for_arg:as': {
-			'$var_name_next': '->',
-			' ': function (lex, bone) {
-				bone.raw.attrs.as = lex.takeToken();
-				return bone.raw.attrs.key ? 'keyword_for_arg:as-await_brace' : 'keyword_for_data';
-			},
-			']': function (lex, bone) {
-				bone.raw.attrs.as = lex.takeToken();
-				return 'keyword_for_data';
-			},
-			'': fail
-		},
-
-		'keyword_for_arg:as-await_brace': {
-			' ': '->',
-			']': 'keyword_for_data',
-			'': fail
-		},
-
-
-		'keyword_for_data': {
+		'KEYWORD': {
 			'': function (lex, bone) {
-				var token = lex.getToken().trim();
-
-				if (token === '' || token === 'i') {
-					return '->';
-				} else if (token === 'in') {
-					bone.raw.attrs.data = parseJS(lex, CLOSE_PARENTHESIS_CODE);
-					return 'keyword_end';
-				}
-
-				fail(lex, bone);
+				return _keyword.parse(lex, bone);
 			}
 		},
 
-		'keyword_end': {
+		'KEYWORD_END': {
 			' ': '->',
 			'{': markAsGroup,
 			'\n': '',
 			'': fail
+		},
+
+		'KW_TYPE:var': {
+			'$var_name_start': '>KW_TYPE_NEXT:var',
+			'': fail
+		},
+		
+		'KW_TYPE_NEXT:var': {
+			'$var_name_next': '->',
+			'': function (lex, bone) {
+				return _keyword.attr(bone, lex.takeToken());
+			}
+		},
+
+		'KW_TYPE:js': {
+			'': function (lex, bone) {
+				return _keyword.attr(bone, parseJS(lex, CLOSE_PARENTHESIS_CODE));
+			}
 		}
 	}, {
 		onstart: function () {
@@ -516,4 +433,133 @@
 			}
 		}
 	});
+
+	parser.keyword = (function () {
+		var _name;
+		var _attr;
+		var _cursor;
+		var _variant;
+
+		var parse = skeletik({
+			'$ws': [' ', '\t', '\n'],
+			'$seq': ['a-z', 'A-Z'],
+			'$name': ['a-z', 'A-Z', '-']
+		}, {
+			'': {
+				'@': 'attr',
+				'': function (lex, bone) {
+					bone.raw.push(lex.code);
+				},
+			},
+
+			'attr': {
+				':': function (lex, bone) {
+					_attr = lex.takeToken();
+					return 'attr:type';
+				}
+			},
+
+			'attr:type': {
+				'$name': '->',
+				'': function (lex, bone) {
+					bone.raw.push({attr: _attr, type: lex.takeToken()});
+					return '>';
+				}
+			}
+		}, {
+			onstart: function (lex, bone) {
+				bone.raw = [];
+			}
+		});
+
+		return {
+			start: function (name) {
+				_name = name;
+				_cursor = 0;
+				_keyword = KEYWORDS[name];
+				_variant = 0;
+
+				return '>KEYWORD';
+			},
+
+			add: function (name, details, options) {
+				var variants = [].concat(details).map(function (value) {
+					return parse(value).raw.slice(0, -1);
+				});
+				var maxVariants = variants.length;
+
+				options = options || {};
+
+				KEYWORDS[name] = {
+					attr: function (bone, value) {
+						bone.raw.attrs[_attr] = value;
+						return '>KEYWORD';
+					},
+
+					parse: function (lex) {
+						var code = lex.code;
+						var seqCode = variants[_variant][_cursor];
+
+						if (
+							(seqCode === void 0) ||
+							((code === OPEN_BRACE_CODE || code === ENTER_CODE) && options.optional)
+						) {
+							// Конец, либо необязательно
+							return '>KEYWORD_END' 
+						} else if (code === seqCode) {
+							_cursor++;
+						} else if (seqCode === SPACE_CODE) {
+							_cursor++;
+							return '>KEYWORD';
+						} else if (code === SPACE_CODE && seq[_cursor - 1] === SPACE_CODE) {
+							// Продолжаем пропускать пробелы
+						} else {
+							if (maxVariants - _variant > 1) {
+								for (var i = _variant; i < maxVariants; i++) {
+									if (variants[i][_cursor] === code) {
+										_variant = i;
+										return this.parse(lex);
+									}
+								}
+							}
+
+							if (seqCode.attr) {
+								_attr = seqCode.attr; 
+								_cursor++;
+
+								return '>KW_TYPE:' + seqCode.type;
+							} else {
+								fail(lex);
+							}
+						}
+
+						return '-->';
+					}
+				};
+			}
+		}
+	})();
+
+	// Define keywords
+	parser.keyword.add('if', ' ( @test:js )');
+	
+	parser.keyword.add('else', ' if ( @test:js )', {
+		optional: true,
+		validate: function (lex, bone) {
+			var raw = bone.prev.raw;
+
+			if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
+				lex.error('Unexpected token else', bone);
+			}
+		}
+	});
+
+	parser.keyword.add('for', [
+		' ( @as:var in @data:js )',
+		' ( [ @key:var , @as:var ] in @data:js )'
+	]);
+
+
+	// Export parser
+	return parser;
 });
