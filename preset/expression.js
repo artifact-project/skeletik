@@ -243,25 +243,6 @@
 		onend: validate
 	});
 
-	expression.varName = skeletik({
-		'$start': ['a-z', 'A-Z', '_'],
-		'$body': ['a-z', 'A-Z', '_', '0-9']
-	}, {
-		'': {
-			' ': '-->',
-			'$start': 'body',
-			'': fail
-		},
-
-		'body': {
-			'$body': '->',
-			'\n': function (lex, bone) {
-				bone.raw = lex.takeToken();
-			},
-			'': fail
-		}
-	});
-
 	// Export
 	return expression;
 });
