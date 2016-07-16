@@ -30,17 +30,17 @@
 	var CLOSE_BRACKET_CODE = 93; // "]"
 	var CLOSE_PARENTHESIS_CODE = 41; // ")"
 
-	var KEYWORDS = {
-		'if': 1,
-		'else': 1,
-		'for': 1
-	};
+	var KEYWORDS = {};
 	var _keyword;
+
+	var NEXT_STATE_KEYWORD = '>KEYWORD';
+	var NEXT_STATE_ENTRY_GROUP = 'entry_group';
+	var NEXT_STATE_COMMENT_AWAIT = 'comment_await';
 
 	var NAME_STOPPER_NEXT_STATE = {};
 	NAME_STOPPER_NEXT_STATE[DOT_CODE] = 'class_name';
 	NAME_STOPPER_NEXT_STATE[PIPE_CODE] = 'entry_text';
-	NAME_STOPPER_NEXT_STATE[SPACE_CODE] = 'entry_group';
+	NAME_STOPPER_NEXT_STATE[SPACE_CODE] = NEXT_STATE_ENTRY_GROUP;
 	NAME_STOPPER_NEXT_STATE[OPEN_BRACKET_CODE] = 'inline_attr';
 
 	var TAB_MODE = 'tab';
@@ -139,28 +139,6 @@
 		return lex.input.substring(start, lex.idx - offset).trim();
 	}
 
-	function parseJSArgName(lex) {
-		var start = lex.idx;
-		var trim = true;
-
-		// Вылидируем имя аргумента
-		lex.idx++;
-		expressionParser.varName.capture(lex, {
-			onpeek: function (lex) {
-				var code = lex.code;
-
-				if (trim && code === SPACE_CODE) {
-					return;
-				} else {
-					trim = false;
-					return !(code === SPACE_CODE || code === COMMA_CODE);
-				}
-			}
-		});
-
-		return lex.input.substring(start + 1, lex.idx).trim();
-	}
-
 	function fail(lex, bone) {
 		lex.error(`Invalid character: \`${lex.getChar()}\``, bone);
 	}
@@ -179,7 +157,7 @@
 			'.': function (lex, parent) {
 				return [addEntry(parent, 'div'), 'class_name'];
 			},
-			'/': 'comment_await',
+			'/': NEXT_STATE_COMMENT_AWAIT,
 			'|': 'text',
 			'}': closeGroup,
 			'$ws': '->',
@@ -195,7 +173,7 @@
 				if (code === ENTER_CODE) {
 					return closeEntry(addEntry(parent, token));
 				} else if (code === SLASH_CODE) {
-					return [closeEntry(addEntry(parent, token)), 'comment_await'];
+					return [closeEntry(addEntry(parent, token)), NEXT_STATE_COMMENT_AWAIT];
 				} else if (KEYWORDS[token]) {
 					return [addKeyword(parent, token), parser.keyword.start(token)];
 				} else {
@@ -222,10 +200,10 @@
 				addClassName(lex, bone);
 				return closeGroup(lex, bone);
 			},
-			'/': 'comment_await',
+			'/': NEXT_STATE_COMMENT_AWAIT,
 			'$ws': function (lex, bone) {
 				addClassName(lex, bone);
-				return lex.code === ENTER_CODE ? closeEntry(bone) : 'entry_group';
+				return lex.code === ENTER_CODE ? closeEntry(bone) : NEXT_STATE_ENTRY_GROUP;
 			}
 		},
 
@@ -236,7 +214,7 @@
 			'+': function (lex, bone) { return bone.parent; },
 			'|': 'entry_text',
 			'/': function (lex, bone) {
-				return [closeEntry(bone), 'comment_await'];
+				return [closeEntry(bone), NEXT_STATE_COMMENT_AWAIT];
 			},
 			'\n': function (lex, bone) {
 				return closeEntry(bone);
@@ -248,7 +226,7 @@
 		'inline_attr': {
 			']': function (lex, bone) {
 				setInlineAttr(lex, bone);
-				return lex.peek(+1) === OPEN_BRACKET_CODE ? 'inline_attr' : 'entry_group';
+				return lex.peek(+1) === OPEN_BRACKET_CODE ? 'inline_attr' : NEXT_STATE_ENTRY_GROUP;
 			},
 			'=': function (lex, bone) {
 				setInlineAttr(lex, bone);
@@ -288,7 +266,7 @@
 			'\n': function (lex, bone) {
 				return closeEntry(bone);
 			},
-			' ': 'entry_group',
+			' ': NEXT_STATE_ENTRY_GROUP,
 			'': fail
 		},
 
@@ -479,7 +457,7 @@
 				_keyword = KEYWORDS[name];
 				_variant = 0;
 
-				return '>KEYWORD';
+				return NEXT_STATE_KEYWORD;
 			},
 
 			add: function (name, details, options) {
@@ -493,7 +471,7 @@
 				KEYWORDS[name] = {
 					attr: function (bone, value) {
 						bone.raw.attrs[_attr] = value;
-						return '>KEYWORD';
+						return NEXT_STATE_KEYWORD;
 					},
 
 					parse: function (lex) {
@@ -510,7 +488,7 @@
 							_cursor++;
 						} else if (seqCode === SPACE_CODE) {
 							_cursor++;
-							return '>KEYWORD';
+							return NEXT_STATE_KEYWORD;
 						} else if (code === SPACE_CODE && seq[_cursor - 1] === SPACE_CODE) {
 							// Продолжаем пропускать пробелы
 						} else {
