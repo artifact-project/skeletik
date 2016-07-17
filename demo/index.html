@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>skeletik</title>
+    <style>
+        #editor { 
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
+	<script src="./ace/xtpl.js"></script>
+	<script src="./ace/xtpl_highlight_rules.js"></script>
+
+</head>
+<body>
+
+<div id="editor">// xtpl demo
+h1#id.title.bar | Hello world!
+</div>
+        
+    <script>
+        var editor = ace.edit('editor');
+        editor.setTheme('ace/theme/monokai');
+        editor.getSession().setMode('ace/mode/xtpl');
+    </script>
+</body>
+</html>
