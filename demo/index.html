@@ -20,12 +20,33 @@
 <body>
 
 <div id="editor">// xtpl demo
+h1#foo.bar[baz][qux="x"] {
+	content: "asf"
+}
+
 h1#id.title.bar | Hello world!
+
+if (auth) {
+	for (user in attrs.users) {
+		| {user.name}
+	}
+} else if (false) {
+	// ???
+} else if (0.1 - .1) {
+	// ---
+} else {
+	form.AuthForm[method="POST"] {
+		action: "/login/"
+
+		input[name="login"]
+	}
+}
 </div>
         
     <script>
         var editor = ace.edit('editor');
-        editor.setTheme('ace/theme/monokai');
+        // editor.setTheme('ace/theme/monokai');
+        editor.setTheme('ace/theme/tomorrow_night');
         editor.getSession().setMode('ace/mode/xtpl');
     </script>
 </body>
