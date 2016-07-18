@@ -87,7 +87,7 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 					regex: '(\\[)(.*?)(=)(".*?")(\\])'
 				},
 				{
-					token: 'meta.tag',
+					token: 'constant.language',
 					regex: '[a-z_-][a-z0-9-_]*'
 				},
 				{
