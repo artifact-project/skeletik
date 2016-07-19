@@ -72,7 +72,7 @@
 			error.column = this.column + (columnOffset|0);
 			error.details = this.input.split('\n')[error.line - 1].substr(0, error.column);
 			error.pretty = [
-				error.details,
+				error.details.replace(/\t/g, ' '),
 				new Array(error.column).join('-') + '^'
 			].join('\n');
 

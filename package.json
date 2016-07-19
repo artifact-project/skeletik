@@ -5,9 +5,11 @@
   "author": "RubaXa <ibnRubaXa@gmail.com>",
   "license": "MIT",
   "main": "skeletik.js",
-  "directories": {
-    "test": "tests"
-  },
+  "files": [
+    "README.md",
+    "skeletik.js",
+    "preset/"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
