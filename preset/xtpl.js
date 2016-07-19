@@ -16,6 +16,7 @@
 	var TEXT_TYPE = 'text';
 	var COMMENT_TYPE = 'comment';
 	var KEYWORD_TYPE = 'keyword';
+	var HIDDEN_CLASS_TYPE = 'hidden:class';
 
 	var ENTER_CODE = 10; // "\n"
 	var SPACE_CODE = 32; // " "
@@ -46,7 +47,7 @@
 	NAME_STOPPER_NEXT_STATE[DOT_CODE] = NEXT_STATE_ID_OR_CLASS;
 	NAME_STOPPER_NEXT_STATE[HASHTAG_CODE] = NEXT_STATE_ID_OR_CLASS;
 
-	NAME_STOPPER_NEXT_STATE[PIPE_CODE] = 'entry_text';
+	NAME_STOPPER_NEXT_STATE[PIPE_CODE] = 'text';
 	NAME_STOPPER_NEXT_STATE[SPACE_CODE] = NEXT_STATE_ENTRY_GROUP;
 	NAME_STOPPER_NEXT_STATE[OPEN_BRACKET_CODE] = NEXT_STATE_INLINE_ATTR;
 
@@ -88,7 +89,13 @@
 	}
 
 	function setShortAttrValue(lex, bone) {
-		setAttr(bone, shortAttrType === DOT_CODE ? 'class' : 'id', lex.takeToken(), ' ');
+		var token = lex.takeToken();
+
+		if (shortAttrType === DOT_CODE && /^[&%]/.test(token)) {
+			token = bone.parent.raw.attrs.class.split(' ').pop() + token.substr(1);
+		}
+
+		setAttr(bone, shortAttrType === DOT_CODE ? 'class' : 'id', token, ' ');
 	}
 
 	function setInlineAttr(lex, bone) {
@@ -97,15 +104,17 @@
 		bone.raw.attrs[inlineAttrName] = true;
 	}
 
-	function closeEntry(bone, group) {
+	function closeEntry(bone, group, shorty) {
 		if (group && !bone.group) {
 			bone = closeEntry(bone);
 		}
 
 		bone = bone.parent;
 
-		while (bone.shorty) {
-			bone = bone.parent;
+		if (shorty && bone) {
+			while (bone.shorty) {
+				bone = bone.parent;
+			}
 		}
 
 		return bone;
@@ -172,6 +181,7 @@
 			'|': 'text',
 			'}': closeGroup,
 			'$ws': '->',
+			'%': '!hidden_class',
 			'': fail
 		},
 
@@ -208,13 +218,25 @@
 			'': fail
 		},
 
+		'hidden_class': {
+			'$ws': function (lex, bone) {
+				shortAttrType = DOT_CODE;
+				bone = add(bone, HIDDEN_CLASS_TYPE, {attrs: {}});
+				setShortAttrValue(lex, bone);
+				return [bone, '>entry_group'];
+			} 
+		},
+
 		'id_or_class': {
 			'$id_or_class': function (lex, bone) {
 				setShortAttrValue(lex, bone);
 				shortAttrType = lex.code;
 				return '-->';
 			},
-			'[': NEXT_STATE_INLINE_ATTR,
+			'[': function (lex, bone) {
+				setShortAttrValue(lex, bone);
+				return NEXT_STATE_INLINE_ATTR;
+			},
 			'}': function (lex, bone) {
 				setShortAttrValue(lex, bone);
 				return closeGroup(lex, bone);
@@ -234,7 +256,7 @@
 			'}': closeGroup,
 			'>': function (lex, bone) { bone.shorty = true; },
 			'+': function (lex, bone) { return bone.parent; },
-			'|': 'entry_text',
+			'|': 'text',
 			'/': function (lex, bone) {
 				return [closeEntry(bone), NEXT_STATE_COMMENT_AWAIT];
 			},
@@ -298,13 +320,6 @@
 			'': fail
 		},
 
-		'entry_text': {
-			'\n': function (lex, bone) {
-				addText(bone, lex.takeToken());
-				return closeEntry(bone);
-			}
-		},
-
 		'comment': {
 			'\n': function (lex, parent) {
 				addComment(parent, lex.takeToken());
@@ -322,8 +337,9 @@
 		},
 
 		'text': {
-			'\n': function (lex, parent) {
-				addText(parent, lex.takeToken());
+			'\n': function (lex, bone) {
+				addText(bone, lex.takeToken());
+				return bone.group ? bone : closeEntry(bone, false, true);
 			}
 		},
 
@@ -364,9 +380,13 @@
 		},
 
 		onend: function (lex, bone) {
-			if (indentMode) {
+			if (indentMode || bone.shorty) {
 				while (bone.type !== '#root') {
 					bone = bone.parent;
+					
+					while (bone.shorty) {
+						bone = bone.parent;
+					}
 				}
 			}
 
@@ -425,6 +445,10 @@
 						} else {
 							while (delta++) {
 								bone = bone.parent;
+
+								while (bone.shorty) {
+									bone = bone.parent;
+								}
 
 								if (bone === void 0) {
 									lex.error('An error occurred while closing tags');
@@ -564,6 +588,12 @@
 		' ( [ @key:var , @as:var ] in @data:js )'
 	]);
 
+	parser.DTD_TYPE = DTD_TYPE;
+	parser.TAG_TYPE = TAG_TYPE;
+	parser.TEXT_TYPE = TEXT_TYPE;
+	parser.COMMENT_TYPE = COMMENT_TYPE;
+	parser.KEYWORD_TYPE = KEYWORD_TYPE;
+	parser.HIDDEN_CLASS_TYPE = HIDDEN_CLASS_TYPE;
 
 	// Export parser
 	return parser;

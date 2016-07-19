@@ -69,8 +69,12 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 					regex: '#[a-z0-9-_]+'
 				},
 				{
-					token: 'entity.other.attribute-name.class',
-					regex: '\\.[a-z_-][a-z0-9-_]+'
+					token: 'variable',
+					regex: '%[a-z_0-9-]+'
+				},
+				{
+					token: ['keyword.operator', 'entity.other.attribute-name.class'],
+					regex: '(\\.)([&a-z_-][a-z0-9-_]*)'
 				},
 				{
 					token: ['support.type', 'punctuation.operator'],
@@ -116,12 +120,12 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 					regex: '\\bin\\b',
 				},
 				{
-					regex: '[()]',
+					regex: '[\\[\\]\\(\\)]',
 					counter: 0,
 					onMatch: function (chr) {
 						this.next = null;
 
-						if (chr === '(') {
+						if (chr === '(' || chr === '[') {
 							this.counter++;
 							return "paren.lparen";
 						} else {
@@ -142,16 +146,16 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 
 			"qqstring" : [
 				{
-					token : "constant.language.escape",
-					regex : R_ESCAPED
+					token: "constant.language.escape",
+					regex: R_ESCAPED
 				}, {
-					token : "string",
-					regex : "\\\\$",
-					next  : "qqstring"
+					token: "string",
+					regex: "\\\\$",
+					next: "qqstring"
 				}, {
-					token : "string",
-					regex : '"|$',
-					next  : "start"
+					token: "string",
+					regex: '"|$',
+					pop: "start"
 				}, {
 					defaultToken: "string"
 				}
@@ -159,16 +163,16 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 			
 			"qstring" : [
 				{
-					token : "constant.language.escape",
-					regex : R_ESCAPED
+					token: "constant.language.escape",
+					regex: R_ESCAPED
 				}, {
-					token : "string",
-					regex : "\\\\$",
-					next  : "qstring"
+					token: "string",
+					regex: "\\\\$",
+					next: "qstring"
 				}, {
-					token : "string",
-					regex : "'|$",
-					next  : "start"
+					token: "string",
+					regex: "'|$",
+					next: "start"
 				}, {
 					defaultToken: "string"
 				}

@@ -1,12 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-	<title>skeletik</title>
+	<meta charset="utf8"/>
+	<title>xtpl :: playground</title>
 	<style>
-		#editor {
+		#xtpl-editor {
 			position: absolute;
-			width: 100%;
+			top: 0;
+			left: 0;
+			width: 50%;
 			height: 100%;
+		}
+
+		#html-editor {
+			position: absolute;
+			top: 0;
+			left: 50%;
+			width: 50%;
+			height: 100%;
+		}
+
+		body {
+			background: #25282c
 		}
 	</style>
 
@@ -21,46 +36,153 @@
 </head>
 <body>
 
-<div id="editor">
-	!html5
-	html[lang="en"]
-		head > title | {pageTitle}
-		body
-			h1.header | xtpl - browser/node template engine
+<div id="xtpl-editor">
+!html
+html[lang="en"]
+	head
+		meta[charset="utf-8"]
+		title | xtpl - browser/nodejs template engine
+	body
+		h1.header | Simple. Easy. Flexible.
+		
+		// Nesting operator
+		section#root.container-fluid > .row > .col-sm-12
+			// Some list
+			ul.list-group
+				// LOOP
+				for ([idx, text] in ['foo', 'bar'])
+					li.list-group-item
+						span.badge | {idx + 1}
+						| {text}
+				
+			// Button with icon + text
+			button.btn.btn-info[type="button"] > i.fa.fa-question + .text | Info
 
-			#container.col
-				if (youAreUsingJade)
-					p | You are amazing
-				else
-					p | Get on it!
+			// (1) Stacked progressbar
+			.progress
+				.&-bar.&-bar-success[style="width: 35%"] > span.sr-only | 35%
+				.&-bar.&-bar-warning.&-bar-striped[style="width: 20%"] > span.sr-only | 20%
+				.&-bar.&-bar-danger[style="width: 10%"] > span.sr-only | 10%
+
+			// (2) Stacked progressbar
+			.progress > %-bar
+				.&.&-success[style="width: 35%"] > span.sr-only | 35%
+				.&.&-warning.&-bar-striped[style="width: 20%"] > span.sr-only | 20%
+				.&.&-danger[style="width: 10%"] > span.sr-only | 10%
 </div>
 
+<div id="html-editor"></div>
+
 <script>
-	var el = document.getElementById('editor');
-	var lines = el.textContent.split('\n');
-	var indentSize = lines[1].match(/^\s+/)[0].length;
+	// xtpl.tags.register('dtd', '<!DOCTYPE {value}>');
+	// xtpl.tags.register('keyword', {
+	// 	'if': ['if ($test) {', '}'],
+	// 	'else': (attrs) => [attrs.test ? 'else if ($test) {' : 'else {', '}'],
+	// 	'for': [`__each($data, ($as:\$value, $key:\$index) => {`, '})'],
+	// 	'switch': 'switch ($test) {', '}'],
+	// 	'case': ['case $value:', 'break'],
+	// 	'choose': ['if (false) {', '}']
+	// 	'when': ['else if ($test) {' : '}'],
+	// 	'otherwise': ['else {', '}']
+	// });
 
-	el.textContent = lines.slice(1).map(function (line) {
-		return line.substr(indentSize);
-	}).join('\n');
+	// HTML Editor
+	var htmlEditor = (function () {
+		var el = document.getElementById('html-editor');
+		var editor = ace.edit(el);
 
-	var editor = ace.edit(el);
+		editor.setTheme('ace/theme/tomorrow_night');
+		editor.getSession().setMode('ace/mode/html');
+		editor.$blockScrolling = Infinity;
 
-	editor.setTheme('ace/theme/tomorrow_night');
-	editor.getSession().setMode('ace/mode/xtpl');
+		return editor;
+	})();
 
-	function toHTML() {
-		var source = editor.getValue();
+	// XTPL Editor
+	var xtplEditor = (function (xtpl, htmlEditor) {
+		var el = document.getElementById('xtpl-editor');
+		var lines = el.textContent.split('\n');
+		var indentSize = (lines[1].match(/^\s+/) || [''])[0].length;
+		var hasErrors = false;
+		var SHORT = {meta: 1};
 
-		try {
-			var frag = skeletik.preset.xtpl(source);
-		} catch (err) {
-			console.log(err.line);
+		el.textContent = lines.slice(1).map(function (line) {
+			return line.substr(indentSize);
+		}).join('\n');
+
+		var editor = ace.edit(el);
+
+		editor.setTheme('ace/theme/tomorrow_night');
+		editor.getSession().setMode('ace/mode/xtpl');
+		editor.getSession().setOptions({tabSize: 2, useSoftTabs: false});
+
+		function toHTML() {
+			var source = editor.getValue();
+
+			try {
+				var frag = xtpl(source);
+				var html = (function _next(node, pad) {
+					var raw = node.raw;
+					var type = node.type;
+
+					if (type === 'dtd') {
+						return '<!DOCTYPE html>\n';
+					} else {
+						var hasText = false;
+						var content = node.nodes.map(function (child) {
+							hasText = child.type === 'text' || hasText;
+							return _next(child, type == '#root' ? '' : pad + '  ');
+						}).join('');
+
+						if (hasText) {
+							content = content.trim();
+						} else {
+							content = '\n' + content + pad;
+						}
+
+						if (type === '#root') {
+							return content;
+						} else if (type === 'text') {
+							return raw.value;
+						} else if (type === 'comment') {
+							return pad + '<!--' + raw.value + '-->\n';
+						} else if (xtpl.HIDDEN_CLASS_TYPE === type) {
+							return content + '\n';
+						} else {
+							var name = raw.name;
+							var attrs = Object.keys(raw.attrs || {}).map(function (name) {
+								return ' ' + name + '="' + raw.attrs[name] + '"';
+							}).join('');
+
+							if (SHORT[name]) {
+								return pad + '<' + name + attrs + '/>\n';
+							} else {
+								return pad + '<' + name + attrs + '>' + content + '</' + name + '>\n';
+							}
+						}
+					}
+				})(frag, '').trim();
+
+				htmlEditor.setValue(html, 1);
+				
+				hasErrors && editor.getSession().setAnnotations([]);
+				hasErrors = false;
+			} catch (err) {
+				hasErrors = true;
+				editor.getSession().setAnnotations([{
+					row: err.line - 1,
+					column: err.column - 1,
+					text: err.message + '\n' + err.pretty,
+					type: "error"
+				}]);
+			}
 		}
-	}
 
-	editor.on('change', toHTML);
-	toHTML();
+		editor.on('change', toHTML);
+		toHTML();
+
+		return xtplEditor;
+	})(skeletik.preset.xtpl, htmlEditor);
 </script>
 </body>
 </html>
