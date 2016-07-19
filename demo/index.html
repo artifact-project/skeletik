@@ -1,53 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>skeletik</title>
-    <style>
-        #editor { 
-            position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            left: 0;
-        }
-    </style>
+	<title>skeletik</title>
+	<style>
+		#editor {
+			position: absolute;
+			width: 100%;
+			height: 100%;
+		}
+	</style>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.3/ace.js"></script>
 	<script src="./ace/xtpl.js"></script>
 	<script src="./ace/xtpl_highlight_rules.js"></script>
+
+	<script src="../skeletik.js"></script>
+	<script src="../preset/expression.js"></script>
+	<script src="../preset/xtpl.js"></script>
 
 </head>
 <body>
 
-<div id="editor">// xtpl demo
-h1#foo.bar[baz][qux="x"] {
-	content: "asf"
-}
+<div id="editor">
+	!html5
+	html[lang="en"]
+		head > title | {pageTitle}
+		body
+			h1.header | xtpl - browser/node template engine
 
-h1#id.title.bar | Hello world!
-
-if (auth) {
-	for (user in attrs.users) {
-		| {user.name}
-	}
-} else if (false) {
-	// ???
-} else if (0.1 - .1) {
-	// ---
-} else {
-	form.AuthForm[method="POST"] {
-		action: "/login/"
-
-		input[name="login"]
-	}
-}
+			#container.col
+				if (youAreUsingJade)
+					p | You are amazing
+				else
+					p | Get on it!
 </div>
-        
-    <script>
-        var editor = ace.edit('editor');
-        // editor.setTheme('ace/theme/monokai');
-        editor.setTheme('ace/theme/tomorrow_night');
-        editor.getSession().setMode('ace/mode/xtpl');
-    </script>
+
+<script>
+	var el = document.getElementById('editor');
+	var lines = el.textContent.split('\n');
+	var indentSize = lines[1].match(/^\s+/)[0].length;
+
+	el.textContent = lines.slice(1).map(function (line) {
+		return line.substr(indentSize);
+	}).join('\n');
+
+	var editor = ace.edit(el);
+
+	editor.setTheme('ace/theme/tomorrow_night');
+	editor.getSession().setMode('ace/mode/xtpl');
+
+	function toHTML() {
+		var source = editor.getValue();
+
+		try {
+			var frag = skeletik.preset.xtpl(source);
+		} catch (err) {
+			console.log(err.line);
+		}
+	}
+
+	editor.on('change', toHTML);
+	toHTML();
+</script>
 </body>
 </html>

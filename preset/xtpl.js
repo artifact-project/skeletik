@@ -11,6 +11,7 @@
 })(function (skeletik, expressionParser) {
 	'use strict';
 
+	var DTD_TYPE = 'dtd';
 	var TAG_TYPE = 'tag';
 	var TEXT_TYPE = 'text';
 	var COMMENT_TYPE = 'comment';
@@ -161,6 +162,7 @@
 		'$var_name_next': ['_', 'a-z', 'A-Z', '0-9']
 	}, {
 		'': {
+			'!': 'dtd',
 			'$name': '!entry',
 			'$id_or_class': function (lex, parent) {
 				shortAttrType = lex.code;
@@ -171,6 +173,12 @@
 			'}': closeGroup,
 			'$ws': '->',
 			'': fail
+		},
+
+		'dtd': {
+			'\n': function (lex, bone) {
+				add(bone, DTD_TYPE, {value: lex.takeToken()});
+			}
 		},
 
 		'entry': {
@@ -370,11 +378,16 @@
 		},
 
 		onindent: function (lex, bone) {
+			if (lex.code === ENTER_CODE) {
+				return;
+			}
+
 			if (lex.indent.tab && lex.indent.space) {
 				lex.error('Mixed spaces and tabs');
 			}
 
 			var mode = lex.indent.tab ? TAB_MODE : (lex.indent.space ? SPACE_MODE : indentMode);
+
 
 			if (indentMode === void 0) {
 				indentMode = mode;

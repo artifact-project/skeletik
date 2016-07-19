@@ -13,6 +13,14 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.first.raw, {value: 'foo-bar'});
 	});
 
+	QUnit.test('!html5', function (assert) {
+		var frag = xtplParser('!html5');
+		assert.equal(frag.length, 1);
+		assert.equal(frag.first.type, 'dtd');
+		assert.equal(frag.first.length, 0);
+		assert.deepEqual(frag.first.raw, {value: 'html5'});
+	});
+
 	QUnit.test('b', function (assert) {
 		var frag = xtplParser('b');
 		assert.equal(frag.length, 1);
@@ -280,6 +288,21 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 
 		testMe('\t');
 		testMe('  ');
+	});
+
+	QUnit.test('indent + empty lines', function (assert) {
+		var frag = xtplParser([
+			'i',
+			'	b',
+			'',
+			'		em',
+			'',
+			'		b',
+		].join('\n'))
+
+		assert.equal(frag.length, 1);
+		assert.equal(frag.first.length, 1);
+		assert.equal(frag.first.first.length, 2);
 	});
 
 	QUnit.test('indent + {}', function (assert) {

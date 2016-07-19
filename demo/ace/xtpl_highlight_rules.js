@@ -40,6 +40,14 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 		this.$rules = {
 			'start': [
 				{
+					token: 'keyword.operator',
+					regex: '![^$]+'
+				},
+				{
+					token: 'keyword.operator',
+					regex: '[>+]'
+				},
+				{
 					token: 'comment',
 					regex: /^\s*\/\/.*$/
 				},
@@ -105,7 +113,7 @@ define('ace/mode/xtpl_highlight_rules', function (require, exports, module) {
 			"keyword": baseTokens().concat([
 				{
 					token: 'keyword',
-					regex: 'in',
+					regex: '\\bin\\b',
 				},
 				{
 					regex: '[()]',
