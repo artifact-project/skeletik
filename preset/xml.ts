@@ -1,4 +1,4 @@
-import skeletik, {Lexer, Bone, SkeletikParser} from '../src/skeletik';
+import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
 
 // Tokens
 export const TAG_TYPE = 'tag';

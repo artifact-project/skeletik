@@ -1,4 +1,4 @@
-import skeletik, {Lexer, Bone, SkeletikParser} from '../src/skeletik';
+import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
 import expressionParser from './expression';
 
 export interface XBone extends Bone {

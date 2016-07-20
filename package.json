@@ -4,14 +4,16 @@
   "description": "Tiny lexical analyzer",
   "author": "RubaXa <ibnRubaXa@gmail.com>",
   "license": "MIT",
-  "main": "skeletik.js",
+  "main": "dist/src/skeletik.js",
+  "typings": "./dist/src/skeletik.d.ts",
   "files": [
     "README.md",
-    "skeletik.js",
-    "preset/"
+    "dist/"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "ntsc --watch",
+    "prepublish": "ntsc"
   },
   "keywords": [
     "skeleton",
