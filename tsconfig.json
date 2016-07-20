@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "module": "amd",
-    "outDir": "./dist/",
-    "target": "es5",
+    "module": "umd",
+    "outDir": "dist/",
+    "target": "es3",
     "declaration": true,
     "experimentalDecorators": true
   },
-  "exclude": ["dist"]
+  "exclude": ["skeletik.d.ts"]
 }
