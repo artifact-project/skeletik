@@ -1,6 +1,8 @@
 define(['qunit', 'skeletik'], function (QUnit, skeletik) {
 	'use strict';
 
+	skeletik = skeletik['default'];
+
 	QUnit.module('skeletik');
 
 	QUnit.test('ranges:fail', function (assert) {

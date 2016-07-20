@@ -6,5 +6,5 @@
     "declaration": true,
     "experimentalDecorators": true
   },
-  "exclude": ["skeletik.d.ts"]
+  "exclude": ["dist"]
 }

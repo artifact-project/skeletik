@@ -1,5 +1,9 @@
 define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
+	'use strict';
+
 	QUnit.module('skeletik:xml');
+
+	xmlParser = xmlParser['default'];
 
 	QUnit.test('empty', function (assert) {
 		var frag = xmlParser('');

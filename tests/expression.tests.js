@@ -3,6 +3,8 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 
 	QUnit.module('skeletik:expression');
 
+	expressionParser = expressionParser['default'];
+
 	function testSyntax(name, cases, debug) {
 		QUnit.test(name, function (assert) {
 			cases.forEach(function (expr) {

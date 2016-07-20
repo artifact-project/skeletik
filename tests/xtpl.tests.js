@@ -5,6 +5,8 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 
 	QUnit.module('skeletik:xtpl');
 
+	xtplParser = xtplParser['default'];
+
 	QUnit.test('| foo-bar', function (assert) {
 		var frag = xtplParser('| foo-bar');
 		assert.equal(frag.length, 1);
@@ -117,7 +119,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	QUnit.test('.foo > %-bar > .&-baz', function (assert) {
 		var frag = xtplParser('.foo > %-bar > .&-baz');
 		assert.deepEqual(frag.first.raw.attrs, {class: 'foo'});
-		assert.deepEqual(frag.first.first.type, xtplParser.HIDDEN_CLASS_TYPE);
+		assert.deepEqual(frag.first.first.type, 'hidden:class');
 		assert.deepEqual(frag.first.first.raw.attrs, {class: 'foo-bar'});
 		assert.deepEqual(frag.first.first.first.raw.attrs, {class: 'foo-bar-baz'});
 	});

@@ -7,7 +7,7 @@ export interface SkeletikStates {
 }
 
 export type SkeletikStateHandle = (lex:Lexer, bone:Bone) => void|string|Bone|[Bone,string]
-export type SkeletikListener = (lex:Lexer, bone:Bone) => boolean | Bone
+export type SkeletikListener = (lex:Lexer, bone:Bone) => void|boolean|Bone
 
 export interface SkeletikState {
 	[index:string]:string | SkeletikStateHandle
@@ -38,6 +38,10 @@ export class LexerSyntaxError extends SyntaxError {
     public column:number;
     public details:string;
     public pretty:string;
+
+	constructor(public message:string) {
+		super(message);
+	}
 }
 
 /**
@@ -68,7 +72,7 @@ export class Lexer {
         return this;
     }
 
-    takeToken(leftOffset, rightOffset):string {
+    takeToken(leftOffset?:number, rightOffset?:number):string {
         const token:string = this.getToken(leftOffset, rightOffset);
         this.lastIdx = this.idx;
         return token;
@@ -87,7 +91,7 @@ export class Lexer {
         return offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset);
     }
 
-    error(message:string, bone, columnOffset):LexerSyntaxError {
+    error(message:string, bone?:Bone, columnOffset?:number):LexerSyntaxError {
         var error = new LexerSyntaxError(message);
 
         error.bone = bone;
@@ -216,7 +220,7 @@ class Skeletik {
 				events: !!events,
 				rules: Object.keys(rules).map((chr:string) => {
 					var next = rules[chr];
-					var setLastIdx = null;
+					var setLastIdx:boolean|string = true;
 					var mode = typeof next === 'string' && next.charAt(0);
 
 					if (mode === '!' || mode === '>') {
