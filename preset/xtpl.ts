@@ -138,9 +138,9 @@ function openOrCloseGroup(lex:Lexer, parent:Bone):Bone|[Bone,string] {
 	}
 }
 
-function parseJS(lex:Lexer, stopper:number) {
-	var start = lex.idx;
-	var offset = 0;
+export function parseJS(lex:Lexer, stopper:number) {
+	const start = lex.idx;
+	let offset = 0;
 
 	// Валидируем выражение
 	expressionParser.capture(lex, {
