@@ -5,6 +5,25 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 
 	QUnit.module('skeletik:xtpl');
 
+	// Define keywords
+	xtplParser.keywords.add('if', ' ( @test:js )');
+
+	xtplParser.keywords.add('else', ' if ( @test:js )', {
+		optional: true,
+		validate: function (lex, bone) {
+			var raw = bone.prev.raw;
+
+			if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
+				lex.error('Unexpected token else', bone);
+			}
+		}
+	});
+
+	xtplParser.keywords.add('for', [
+		' ( @as:var in @data:js )',
+		' ( [ @key:var , @as:var ] in @data:js )'
+	]);
+
 	xtplParser = xtplParser['default'];
 
 	QUnit.test('| foo-bar', function (assert) {
@@ -339,22 +358,21 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 			'  x > em | foo',
 			'  y > em | bar',
 		].join('\n'));
-		console.log(JSON.stringify(frag, null, 2));
 
 		assert.deepEqual(frag.length, 1);
 		assert.deepEqual(frag.nodes[0].raw.name, 'i');
 
 		assert.deepEqual(frag.nodes[0].length, 2);
 		assert.deepEqual(frag.nodes[0].nodes[0].raw.name, 'x');
-		// assert.deepEqual(frag.nodes[0].nodes[1].raw.name, 'y');
+		assert.deepEqual(frag.nodes[0].nodes[1].raw.name, 'y');
 		
 		assert.deepEqual(frag.nodes[0].nodes[0].length, 1);
 		assert.deepEqual(frag.nodes[0].nodes[0].nodes[0].raw.name, 'em');
 		assert.deepEqual(frag.nodes[0].nodes[0].nodes[0].first.raw.value, 'foo');
 
-		// assert.deepEqual(frag.nodes[0].nodes[1].length, 1);
-		// assert.deepEqual(frag.nodes[0].nodes[1].nodes[0].raw.name, 'em');
-		// assert.deepEqual(frag.nodes[0].nodes[1].nodes[0].first.raw.value, 'bar');
+		assert.deepEqual(frag.nodes[0].nodes[1].length, 1);
+		assert.deepEqual(frag.nodes[0].nodes[1].nodes[0].raw.name, 'em');
+		assert.deepEqual(frag.nodes[0].nodes[1].nodes[0].first.raw.value, 'bar');
 	});
 
 	QUnit.test('indent + empty lines', function (assert) {
@@ -466,7 +484,9 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		}
 
 		// testMe('if(1){.foo}else{b.bar}');
-		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
+		// testMe('if(1)\n\t.foo\nelse\n\tb.bar');
+		testMe('if(1)  \n\t.foo\nelse  \n\tb.bar');
+		// testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
 	});
 
 	QUnit.test('for (val in data)', function (assert) {

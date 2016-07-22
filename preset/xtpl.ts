@@ -192,12 +192,12 @@ export default <SkeletikParser>skeletik({
 			const code:number = lex.code;
 			const token:string = lex.takeToken();
 
-			if (code === ENTER_CODE) {
+			if (KEYWORDS[token]) {
+				return [addKeyword(parent, token), keywords.start(token)];
+			} else if (code === ENTER_CODE) {
 				return closeEntry(addEntry(parent, token));
 			} else if (code === SLASH_CODE) {
 				return [closeEntry(addEntry(parent, token)), NEXT_STATE_COMMENT_AWAIT];
-			} else if (KEYWORDS[token]) {
-				return [addKeyword(parent, token), keywords.start(token)];
 			} else {
 				const next:string = NAME_STOPPER_NEXT_STATE[code] || NAME_STOPPER_NEXT_STATE[SPACE_CODE];
 				shortAttrType = code;
@@ -503,7 +503,7 @@ export const keywords = (function () {
 				parse(lex:Lexer) {
 					const code = lex.code;
 					const seqCode = variants[_variant][_cursor];
-					const prevSeqCode = variants[_variant][_cursor];
+					const prevSeqCode = variants[_variant][_cursor - 1];
 
 					if (
 						(seqCode === void 0) ||
@@ -544,22 +544,3 @@ export const keywords = (function () {
 		}
 	}
 })();
-
-// Define keywords
-keywords.add('if', ' ( @test:js )');
-
-keywords.add('else', ' if ( @test:js )', {
-	optional: true,
-	validate: function (lex, bone) {
-		var raw = bone.prev.raw;
-
-		if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
-			lex.error('Unexpected token else', bone);
-		}
-	}
-});
-
-keywords.add('for', [
-	' ( @as:var in @data:js )',
-	' ( [ @key:var , @as:var ] in @data:js )'
-]);
