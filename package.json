@@ -5,7 +5,7 @@
   "author": "RubaXa <ibnRubaXa@gmail.com>",
   "license": "MIT",
   "main": "dist/skeletik.js",
-  "typings": "./dist/src/skeletik.d.ts",
+  "typings": "dist/skeletik.d.ts",
   "files": [
     "README.md",
     "dist/",
@@ -13,8 +13,8 @@
   ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "watch": "ntsc --watch",
-    "prepublish": "ntsc"
+    "watch": "tsc --watch",
+    "prepublish": "tsc"
   },
   "keywords": [
     "skeleton",

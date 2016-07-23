@@ -92,7 +92,7 @@ export class Lexer {
     }
 
     error(message:string, bone?:Bone, columnOffset?:number):LexerSyntaxError {
-        var error = new LexerSyntaxError(message);
+        const error = new LexerSyntaxError(message);
 
         error.bone = bone;
         error.chr = this.getChar();
@@ -130,7 +130,7 @@ export class Bone {
     constructor(public type:string, public raw?:any) {}
 
     add(type:string, raw?:any):this {
-        var bone = new Bone(type, raw);
+        const bone = new Bone(type, raw);
 
         bone.parent = this;
 
