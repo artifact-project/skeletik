@@ -489,11 +489,9 @@ export const keywords = (function () {
 			return NEXT_STATE_KEYWORD;
 		},
 
-		add(name:string, details:string|string[], options?:any) {
+		add(name:string, details:string|string[], options:any = {}) {
 			const variants:Array<any[]> = [].concat(details).map((value) => parse(value).raw.slice(0, -1));
 			const maxVariants = variants.length;
-
-			options = options || {};
 
 			KEYWORDS[name] = {
 				attr(bone:Bone, value:string) {
@@ -501,7 +499,7 @@ export const keywords = (function () {
 					return NEXT_STATE_KEYWORD;
 				},
 
-				parse(lex:Lexer) {
+				parse(lex:Lexer, bone:Bone) {
 					const code = lex.code;
 					const seqCode = variants[_variant][_cursor];
 					const prevSeqCode = variants[_variant][_cursor - 1];
@@ -511,6 +509,7 @@ export const keywords = (function () {
 						((code === OPEN_BRACE_CODE || code === ENTER_CODE) && options.optional)
 					) {
 						// Конец, либо необязательно
+						options.validate && options.validate(lex, bone);
 						return '>KEYWORD_END' 
 					} else if (code === seqCode) {
 						_cursor++;
@@ -524,7 +523,7 @@ export const keywords = (function () {
 							for (var i = _variant; i < maxVariants; i++) {
 								if (variants[i][_cursor] === code) {
 									_variant = i;
-									return this.parse(lex);
+									return this.parse(lex, bone);
 								}
 							}
 						}
@@ -535,7 +534,7 @@ export const keywords = (function () {
 
 							return '>KW_TYPE:' + seqCode.type;
 						} else {
-							fail(lex);
+							fail(lex, bone);
 						}
 					}
 

@@ -11,7 +11,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	xtplParser.keywords.add('else', ' if ( @test:js )', {
 		optional: true,
 		validate: function (lex, bone) {
-			var raw = bone.prev.raw;
+			var raw = bone.prev ? bone.prev.raw : {};
 
 			if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
 				lex.error('Unexpected token else', bone);
@@ -487,6 +487,20 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('if(1)\n\t.foo\nelse\n\tb.bar');
 		testMe('if(1)  \n\t.foo\nelse  \n\tb.bar');
 		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
+	});
+
+	QUnit.test('else / errors', function (assert) {
+		function testMe(tpl) {
+			try {
+				xtplParser(tpl);
+				assert.ok(false, 'Error?');
+			} catch (err) {
+				assert.equal(err.message, 'Unexpected token else');
+			}
+		}
+
+		testMe('else{}');
+		testMe('if(1){}else{}else{}');
 	});
 
 	QUnit.test('for (val in data)', function (assert) {
