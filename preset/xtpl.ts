@@ -7,6 +7,7 @@ export interface XBone extends Bone {
 }
 
 // Bone types
+export const ROOT_TYPE = '#root';
 export const DTD_TYPE = 'dtd';
 export const TAG_TYPE = 'tag';
 export const TEXT_TYPE = 'text';
@@ -146,7 +147,7 @@ export function parseJS(lex:Lexer, stopper:number) {
 	expressionParser.capture(lex, {
 		onpeek: function (lex, bone) {
 			offset = lex.code === stopper ? 0 : 1;
-			return !(bone.type === '#root' && (lex.code === stopper || lex.prevCode === stopper));
+			return !(bone.type === ROOT_TYPE && (lex.code === stopper || lex.prevCode === stopper));
 		}
 	});
 
@@ -220,7 +221,7 @@ export default <SkeletikParser>skeletik({
 			bone = add(bone, HIDDEN_CLASS_TYPE, {attrs: {}});
 			setShortAttrValue(lex, bone);
 			return [bone, '>entry_group'];
-		} 
+		}
 	},
 
 	'id_or_class': {
@@ -346,7 +347,7 @@ export default <SkeletikParser>skeletik({
 		'$var_name_start': '>KW_TYPE_NEXT:var',
 		'': fail
 	},
-	
+
 	'KW_TYPE_NEXT:var': {
 		'$var_name_next': '->',
 		'': (lex, bone) => _keyword.attr(bone, lex.takeToken())
@@ -363,16 +364,16 @@ export default <SkeletikParser>skeletik({
 
 	onend: (lex, bone) => {
 		if (indentMode || (bone as XBone).shorty) {
-			while (bone.type !== '#root') {
+			while (bone.type !== ROOT_TYPE) {
 				bone = bone.parent;
-				
+
 				while ((bone as XBone).shorty) {
 					bone = bone.parent;
 				}
 			}
 		}
 
-		if (bone.type !== '#root') {
+		if (bone.type !== ROOT_TYPE) {
 			lex.error(bone.raw.name + ' not closing');
 		}
 
