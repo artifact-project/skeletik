@@ -483,10 +483,10 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 			assert.deepEqual(frag.last.first.raw, {name: 'b', attrs: {class: 'bar'}});
 		}
 
-		// testMe('if(1){.foo}else{b.bar}');
-		// testMe('if(1)\n\t.foo\nelse\n\tb.bar');
+		testMe('if(1){.foo}else{b.bar}');
+		testMe('if(1)\n\t.foo\nelse\n\tb.bar');
 		testMe('if(1)  \n\t.foo\nelse  \n\tb.bar');
-		// testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
+		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
 	});
 
 	QUnit.test('for (val in data)', function (assert) {
