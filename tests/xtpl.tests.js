@@ -6,9 +6,11 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	QUnit.module('skeletik:xtpl');
 
 	// Define keywords
-	xtplParser.keywords.add('if', ' ( @test:js )');
+	var keywords = xtplParser.keywords;
+	
+	keywords.add('if', ' ( @test:js )');
 
-	xtplParser.keywords.add('else', ' if ( @test:js )', {
+	keywords.add('else', ' if ( @test:js )', {
 		optional: true,
 		validate: function (lex, bone) {
 			var raw = bone.prev ? bone.prev.raw : {};
@@ -19,7 +21,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		}
 	});
 
-	xtplParser.keywords.add('for', [
+	keywords.add('for', [
 		' ( @as:var in @data:js )',
 		' ( [ @key:var , @as:var ] in @data:js )'
 	]);
@@ -144,19 +146,32 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	});
 
 	QUnit.test('i.foo.bar | qux', function (assert) {
-		var frag = xtplParser('i.foo.bar | qux');
-		assert.equal(frag.length, 1);
-		assert.deepEqual(frag.first.raw, {name: 'i', attrs: {class: 'foo bar'}});
-		assert.deepEqual(frag.first.length, 1);
-		assert.deepEqual(frag.first.first.raw, {value: 'qux'});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1, tpl);
+			assert.deepEqual(frag.first.raw, {name: 'i', attrs: {class: 'foo bar'}});
+			assert.deepEqual(frag.first.length, 1);
+			assert.deepEqual(frag.first.first.raw, {value: 'qux'});
+		}
+
+		testMe('i.foo.bar|qux');
+		testMe('i.foo.bar | qux');
+		testMe('i.foo.bar{|qux\n}');
 	});
 
 	QUnit.test('i > b', function (assert) {
-		var frag = xtplParser('i > b');
-		assert.equal(frag.length, 1);
-		assert.deepEqual(frag.first.raw, {name: 'i', attrs: {}});
-		assert.deepEqual(frag.first.length, 1);
-		assert.deepEqual(frag.first.first.raw, {name: 'b', attrs: {}});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1, tpl);
+			assert.deepEqual(frag.first.raw, {name: 'i', attrs: {}});
+			assert.deepEqual(frag.first.length, 1);
+			assert.deepEqual(frag.first.first.raw, {name: 'b', attrs: {}});
+		}
+
+		testMe('i>b');
+		testMe('i >b');
+		testMe('i> b');
+		testMe('i > b');
 	});
 
 	QUnit.test('i > b | foo', function (assert) {
@@ -170,14 +185,22 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	});
 
 	QUnit.test('i > b + em | foo', function (assert) {
-		var frag = xtplParser('i > b + em | foo');
-		assert.equal(frag.length, 1);
-		assert.deepEqual(frag.first.raw, {name: 'i', attrs: {}});
-		assert.deepEqual(frag.first.length, 2);
-		assert.deepEqual(frag.first.first.raw, {name: 'b', attrs: {}});
-		assert.deepEqual(frag.first.last.raw, {name: 'em', attrs: {}});
-		assert.deepEqual(frag.first.last.length, 1);
-		assert.deepEqual(frag.first.last.first.raw, {value: 'foo'});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1, tpl);
+			assert.deepEqual(frag.first.raw, {name: 'i', attrs: {}});
+			assert.deepEqual(frag.first.length, 2);
+			assert.deepEqual(frag.first.first.raw, {name: 'b', attrs: {}});
+			assert.deepEqual(frag.first.last.raw, {name: 'em', attrs: {}});
+			assert.deepEqual(frag.first.last.length, 1);
+			assert.deepEqual(frag.first.last.first.raw, {value: 'foo'});
+		}
+
+		testMe('i>b+em|foo');
+		testMe('i > b +em|foo');
+		testMe('i > b+ em|foo');
+		testMe('i > b + em|foo');
+		testMe('i > b + em | foo');
 	});
 
 	QUnit.test('i.foo\\n.bar', function (assert) {
@@ -456,6 +479,9 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('1.2', 'if (1.2)\n\t.foo\n\tspan.bar', 2);
 		testMe('-8', 'if ( -8 ) {.foo}');
 		testMe('foo.bar', 'if(foo.bar){.foo}');
+		testMe('foo.bar', 'if(foo.bar) { .foo }');
+		testMe('foo.bar', 'if(foo.bar){div.foo}');
+		testMe('foo.bar', 'if (foo.bar) { div.foo }');
 	});
 
 	QUnit.test('if else', function (assert) {
@@ -487,6 +513,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('if(1)\n\t.foo\nelse\n\tb.bar');
 		testMe('if(1)  \n\t.foo\nelse  \n\tb.bar');
 		testMe('if(1){.foo}else if(-1){i.baz}else{b.bar}', true);
+		testMe('if(1) { .foo } else if (-1) { i.baz } else { b.bar }', true);
 	});
 
 	QUnit.test('else / errors', function (assert) {
@@ -532,5 +559,20 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 
 		testMe('for([idx, val] in [1,2]){.foo}');
 		testMe('for ( [ idx , val ] in [1,2] ) { .foo }');
+	});
+
+	0 && QUnit.test('foo = [bar,baz]', function (assert) {
+		function testMe(tpl, args) {
+			var frag = xtplParser(tpl);
+			
+			assert.deepEqual(frag.length, 1, tpl);
+			assert.deepEqual(frag.first.type, 'define');
+			assert.deepEqual(frag.first.raw, {name: 'foo', attrs: args});
+		}
+
+		testMe('foo=[bar]', ['bar']);
+		testMe('foo = [ bar ]', ['bar']);
+		testMe('foo=[bar,baz]', ['bar', 'baz']);
+		testMe('foo = [ bar , baz ]', ['bar', 'baz']);
 	});
 });
