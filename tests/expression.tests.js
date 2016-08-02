@@ -153,8 +153,8 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 	);
 
 	testSyntax(
-		'Сonditional operator error: Unexpected token : [COLON]',
-		['true ? : 2']
+		'Сonditional operator error: Unexpected token',
+		['true ? : 2', '(1 ? 2 : )']
 	);
 
 	// testSyntax(
