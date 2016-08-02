@@ -590,4 +590,20 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 			testMe('foo = ' + o + ' bar , qux ' + c, type, ['bar', 'qux']);
 		});
 	});
+
+	QUnit.test('foo(..)', function (assert) {
+		function testMe(tpl, args) {
+			var frag = xtplParser(tpl);
+			
+			assert.deepEqual(frag.length, 1, tpl);
+			assert.deepEqual(frag.first.type, 'call');
+			assert.deepEqual(frag.first.raw.name, 'foo');
+			assert.deepEqual(frag.first.raw.args, args);
+		}
+
+		testMe('foo()', []);
+		testMe('foo(Date.now())', ['Date.now()']);
+		testMe('foo(12.toString(36))', ['12.toString(36)']);
+		testMe('foo(factory(null, now()), name)', ['factory(null, now())', 'name']);
+	});
 });

@@ -15,6 +15,7 @@ export const COMMENT_TYPE = 'comment';
 export const KEYWORD_TYPE = 'keyword';
 export const HIDDEN_CLASS_TYPE = 'hidden:class';
 export const DEFINE_TYPE = 'define';
+export const CALL_TYPE = 'call';
 
 // Codes
 const ENTER_CODE = 10; // "\n"
@@ -52,6 +53,7 @@ const NAME_STOPPER_NEXT_STATE = {
 	[PIPE_CODE]: 'text',
 	[OPEN_BRACKET_CODE]: NEXT_STATE_INLINE_ATTR,
 	[EQUAL_CODE]: DEFINE_TYPE,
+	[OPEN_PARENTHESIS_CODE]: 'fn-call',
 
 	[GT_CODE]: `>${NEXT_STATE_ENTRY_GROUP}`,
 	[PLUS_CODE]: `>${NEXT_STATE_ENTRY_GROUP}`
@@ -167,7 +169,7 @@ export function parseJS(lex:Lexer, stopper:number) {
 
 	// Валидируем выражение
 	expressionParser.capture(lex, {
-		onpeek: function (lex, bone) {
+		onpeek(lex, bone) {
 			offset = lex.code === stopper ? 0 : 1;
 			return !(bone.type === ROOT_TYPE && (lex.code === stopper || lex.prevCode === stopper));
 		}
@@ -175,6 +177,28 @@ export function parseJS(lex:Lexer, stopper:number) {
 
 	return lex.input.substring(start, lex.idx - offset).trim();
 }
+
+export function parseJSCallArgs(lex:Lexer) {
+	const args = [];
+	let idx = lex.idx;
+
+	expressionParser.capture(lex, {
+		onpeek(lex, bone) {
+			const exit = (bone.type === ROOT_TYPE && (lex.code === CLOSE_PARENTHESIS_CODE));
+
+			if (exit || bone.type === ROOT_TYPE && lex.code === COMMA_CODE) {
+				const token = lex.input.substring(idx, lex.idx).trim();
+				token && args.push(token);
+				idx = lex.idx + 1;
+			}
+
+			return !exit;
+		}
+	});
+
+	return args;
+}
+
 
 function fail(lex:Lexer, bone?:Bone):void {
 	console.info(lex.state);
@@ -236,9 +260,9 @@ export default <SkeletikParser>skeletik({
 
 			if (KEYWORDS[token]) {
 				return [addKeyword(parent, token), keywords.start(token)];
-			} else if (code === ENTER_CODE) {
+			} else if (ENTER_CODE === code) {
 				return closeEntry(addEntry(parent, token));
-			} else if (code === SLASH_CODE) {
+			} else if (SLASH_CODE === code) {
 				return [closeEntry(addEntry(parent, token)), NEXT_STATE_COMMENT_AWAIT];
 			} else {
 				const next:string = NAME_STOPPER_NEXT_STATE[code];
@@ -420,6 +444,14 @@ export default <SkeletikParser>skeletik({
 			}
 		}
 	},
+
+	'fn-call': {
+		'': (lex, bone) => {
+			bone.type = CALL_TYPE;
+			bone.raw.args = parseJSCallArgs(lex);
+			return NEXT_STATE_ENTRY_GROUP;
+		}
+	}
 }, {
 	onstart: () => {
 		indentMode = void 0;
