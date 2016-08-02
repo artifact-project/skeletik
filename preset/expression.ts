@@ -17,6 +17,7 @@ export const T_PARENTHESIS = 'parenthesis'; // ()
 
 // Character codes
 const DOT_CODE = 46; // "."
+const COLON_DOT = 58; // ":"
 
 // Group by token
 const IS_GROUP = {};
@@ -169,12 +170,18 @@ export default <SkeletikParser>skeletik({
 			const chr = lex.takeChar();
 			const last = bone.last as EBone;
 
-			if (last && lex.code === DOT_CODE && last.type === T_NUMBER) {
-				last.isFloat && lex.error('Unexpected end of input');
-				last.isFloat = true;
-				last.raw += chr;
+			if (last) {
+				if (last.type === T_SIGN) {
+					lex.error(`Unexpected token ${chr}`);
+				} else if (lex.code === DOT_CODE && last.type === T_NUMBER) {
+					last.isFloat && lex.error('Unexpected end of input');
+					last.isFloat = true;
+					last.raw += chr;
+				} else {
+					add(lex, bone, T_SIGN, chr);
+				}
 			} else {
-				add(lex, bone, T_SIGN, chr);
+				add(lex, bone, T_SIGN, chr);				
 			}
 		},
 

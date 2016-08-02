@@ -78,7 +78,7 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 
 	testSyntax(
 		'without errors',
-		['x()', 'x ()', '(+1)', '[+1]', '"foo"', '""', '{}', '[]']
+		['x()', 'x ()', '(+1)', '[+1]', '"foo"', '""', '{}', '[]', '(1, 2)']
 	);
 
 	testSyntax(
@@ -128,7 +128,7 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 		'Unexpected token',
 		[
 			',', '.', , '*', '&', '|', '^', ']', '}', ')', '%', '&', '=', '?', ':', '>', '<',
-			'[+]', '(+)'
+			'[+]', '(+)', '(1,)'
 		]
 	);
 
@@ -145,6 +145,16 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 	testSyntax(
 		'Unexpected identifier',
 		["''x", '(1)x', '[]y']
+	);
+
+	testSyntax(
+		'Сonditional operator',
+		['true ? 1 : 2']
+	);
+
+	testSyntax(
+		'Сonditional operator error: Unexpected token : [COLON]',
+		['true ? : 2']
 	);
 
 	// testSyntax(
