@@ -149,7 +149,7 @@ define(['qunit', 'skeletik/preset/expression'], function (QUnit, expressionParse
 
 	testSyntax(
 		'Сonditional operator',
-		['true ? 1 : 2']
+		['true ? 1 : 2', '1 ? 2 : 3, 4']
 	);
 
 	testSyntax(
