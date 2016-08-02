@@ -29,6 +29,7 @@ const OPEN_BRACE_CODE = 123; // "{"
 const CLOSE_BRACE_CODE = 125; // "}"
 const OPEN_BRACKET_CODE = 91; // "["
 const CLOSE_BRACKET_CODE = 93; // "]"
+const OPEN_PARENTHESIS_CODE = 40; // "("
 const CLOSE_PARENTHESIS_CODE = 41; // ")"
 const HASHTAG_CODE = 35; // "#"
 const EQUAL_CODE = 61; // "="
@@ -61,6 +62,12 @@ const ID_OR_CLASS_STOPPER_NEXT_STATE = {
 	[OPEN_BRACKET_CODE]: NEXT_STATE_INLINE_ATTR, // [
 	[PIPE_CODE]: 'text', // |
 	[SPACE_CODE]: NEXT_STATE_ENTRY_GROUP
+};
+
+const DEFINE_TYPES = {
+	[OPEN_BRACE_CODE]: ['brace', CLOSE_BRACE_CODE], // {}
+	[OPEN_BRACKET_CODE]: ['bracket', CLOSE_BRACKET_CODE], // []
+	[OPEN_PARENTHESIS_CODE]: ['parenthesis', CLOSE_PARENTHESIS_CODE], // ()
 };
 
 
@@ -179,10 +186,11 @@ export default <SkeletikParser>skeletik({
 	'$ws': [' ', '\t', '\n'],
 	'$id_or_class': ['.', '#'],
 	'$name': ['a-z', 'A-Z', '-', '_', '0-9'],
-	'$name_stopper': ['.', '#', '|', '\n', '/', '[', '(', '>', '+', '{', '}'],
+	'$name_stopper': ['.', '#', '|', '\n', '/', '[', '(', '>', '+', '{', '}', '='],
 	'$attr': ['a-z', 'A-Z', '-', '_', ':', '@', '0-9'],
 	'$var_name_start': ['_', 'a-z', 'A-Z'],
-	'$var_name_next': ['_', 'a-z', 'A-Z', '0-9']
+	'$var_name_next': ['_', 'a-z', 'A-Z', '0-9'],
+	'$define_type': ['[', '{', '('],
 }, {
 	'': {
 		'!': 'dtd',
@@ -385,8 +393,33 @@ export default <SkeletikParser>skeletik({
 
 	'define': {
 		' ': '->',
-		'': fail
-	}
+		'$define_type': (lex, bone) => {
+			const type = DEFINE_TYPES[lex.code];
+			bone.type = DEFINE_TYPE;
+			bone.raw.type = type[0];
+			bone.raw.attrs = [];
+			bone.raw.opened = lex.code;
+			bone.raw.closed = type[1];
+			return 'define:args';
+		},
+		'': fail,
+	},
+
+	'define:args': {
+		'$name': '->',
+		'': (lex, bone) => {
+			const code = lex.code;
+			const raw = bone.raw;
+
+			if (COMMA_CODE === code || SPACE_CODE === code || raw.closed === code) {
+				const token = lex.takeToken().trim();
+				token && raw.attrs.push(token);
+				return raw.closed === code ? NEXT_STATE_ENTRY_GROUP : '-->';
+			} else {
+				fail(lex, bone)
+			}
+		}
+	},
 }, {
 	onstart: () => {
 		indentMode = void 0;

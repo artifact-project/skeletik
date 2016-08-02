@@ -10,7 +10,11 @@ export type SkeletikStateHandle = (lex:Lexer, bone:Bone) => void|string|Bone|[Bo
 export type SkeletikListener = (lex:Lexer, bone:Bone) => void|boolean|Bone
 
 export interface SkeletikState {
-	[index:string]:string | SkeletikStateHandle
+	[index:string]:string | SkeletikStateHandle | SkeletikStateEvents;
+}
+
+export interface SkeletikStateEvents {
+	start:SkeletikStateHandle;
 }
 
 export interface SkeletikOptions {

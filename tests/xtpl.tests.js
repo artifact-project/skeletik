@@ -561,18 +561,33 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('for ( [ idx , val ] in [1,2] ) { .foo }');
 	});
 
-	0 && QUnit.test('foo = [bar,baz]', function (assert) {
-		function testMe(tpl, args) {
+	QUnit.test('foo = [..]/{..}/(..)', function (assert) {
+		function testMe(tpl, type, attrs) {
 			var frag = xtplParser(tpl);
 			
-			assert.deepEqual(frag.length, 1, tpl);
+			assert.deepEqual(frag.length, 1, type + ': ' + tpl);
 			assert.deepEqual(frag.first.type, 'define');
-			assert.deepEqual(frag.first.raw, {name: 'foo', attrs: args});
+			assert.deepEqual(frag.first.raw.name, 'foo');
+			assert.deepEqual(frag.first.raw.type, type);
+			assert.deepEqual(frag.first.raw.attrs, attrs);
 		}
 
-		testMe('foo=[bar]', ['bar']);
-		testMe('foo = [ bar ]', ['bar']);
-		testMe('foo=[bar,baz]', ['bar', 'baz']);
-		testMe('foo = [ bar , baz ]', ['bar', 'baz']);
+		var types = {
+			'brace': '{}',
+			'bracket': '[]',
+			'parenthesis': '()'
+		};
+
+		Object.keys(types).forEach(function (type) {
+			var tmp = types[type].split('');
+			var o = tmp[0];
+			var c = tmp[1];
+
+			testMe('foo=' + o + c, type, []);
+			testMe('foo = ' + o + ' ' + c, type, []);
+			testMe('foo = ' + o + 'bar' + c, type, ['bar']);
+			testMe('foo = ' + o + ' bar ' + c, type, ['bar']);
+			testMe('foo = ' + o + ' bar , qux ' + c, type, ['bar', 'qux']);
+		});
 	});
 });
