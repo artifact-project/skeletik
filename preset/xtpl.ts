@@ -22,6 +22,7 @@ const ENTER_CODE = 10; // "\n"
 const SPACE_CODE = 32; // " "
 const DOT_CODE = 46; // "."
 const COMMA_CODE = 44; // ","
+const COLON_CODE = 58; // ":"
 const PIPE_CODE = 124; // "|"
 const SLASH_CODE = 47; // "/"
 const QUOTE_CODE = 34; // >>"<<
@@ -110,14 +111,22 @@ function setAttr(bone:Bone, name:string, value:string, glue?:string):void {
 	bone.raw.attrs[name] = newValue;
 }
 
-function setShortAttrValue(lex:Lexer, bone:Bone):void {
-	let token = lex.takeToken();
+function takeShortAttrValue(lex:Lexer, bone:Bone):void {
+	setShortAttrValue(bone, shortAttrType === DOT_CODE ? 'class' : 'id', lex.takeToken());
+}
 
-	if (shortAttrType === DOT_CODE && /^[&%]/.test(token)) {
-		token = bone.parent.raw.attrs.class.split(' ').pop() + token.substr(1);
+function setShortAttrValue(bone:Bone, name:string, value:string, expression?:string, selfNesting?:boolean) {
+	let newValue = value;
+
+	if (name === 'class' && /^[&%]/.test(value)) {
+		newValue = (selfNesting ? bone : bone.parent).raw.attrs.class.split(' ').shift() + value.substr(1);
 	}
 
-	setAttr(bone, shortAttrType === DOT_CODE ? 'class' : 'id', token, ' ');
+	if (expression) {
+		newValue = `{${expression} ? "${newValue}" : ""}`;
+	}
+
+	setAttr(bone, name, newValue, ' ');
 }
 
 function setInlineAttr(lex:Lexer, bone:Bone):void {
@@ -163,8 +172,8 @@ function openOrCloseGroup(lex:Lexer, parent:Bone):Bone|[Bone,string] {
 	}
 }
 
-export function parseJS(lex:Lexer, stopper:number) {
-	const start = lex.idx;
+export function parseJS(lex:Lexer, stopper:number, initialOffset:number = 0) {
+	const start = lex.idx + initialOffset;
 	let offset = 0;
 
 	// Валидируем выражение
@@ -254,12 +263,14 @@ export default <SkeletikParser>skeletik({
 	'entry_stopper': {
 		'{': openOrCloseGroup,
 		'}': openOrCloseGroup,
-		'$name_stopper': (lex:Lexer, parent:Bone):Bone|[Bone, string] => {
+		'$name_stopper': (lex:Lexer, parent:Bone):string|Bone|[Bone, string] => {
 			const code:number = lex.code;
 			const token:string = lex.takeToken().trim();
 
 			if (KEYWORDS[token]) {
 				return [addKeyword(parent, token), keywords.start(token)];
+			} else if (token === 'class') {
+				return 'class_attr';
 			} else if (ENTER_CODE === code) {
 				return closeEntry(addEntry(parent, token));
 			} else if (SLASH_CODE === code) {
@@ -273,18 +284,25 @@ export default <SkeletikParser>skeletik({
 		'': fail
 	},
 
+	'class_attr': {
+		':': (lex, bone) => {
+			inlineAttrName = lex.takeToken();
+			setShortAttrValue(bone, 'class', inlineAttrName, parseJS(lex, ENTER_CODE, 1), true);
+		}
+	},
+
 	'hidden_class': {
 		'$ws': (lex, bone) => {
 			shortAttrType = DOT_CODE;
 			bone = add(bone, HIDDEN_CLASS_TYPE, {attrs: {}});
-			setShortAttrValue(lex, bone);
+			takeShortAttrValue(lex, bone);
 			return [bone, '>entry_group'];
 		}
 	},
 
 	'id_or_class': {
 		'$id_or_class': (lex, bone) => {
-			setShortAttrValue(lex, bone);
+			takeShortAttrValue(lex, bone);
 			shortAttrType = lex.code;
 			return '-->';
 		},
@@ -300,7 +318,7 @@ export default <SkeletikParser>skeletik({
 				retVal = [closeEntry(bone), NEXT_STATE_COMMENT_AWAIT]
 			}
 
-			(retVal !== '->') && setShortAttrValue(lex, bone);
+			(retVal !== '->') && takeShortAttrValue(lex, bone);
 
 			return retVal;
 		}
@@ -315,7 +333,7 @@ export default <SkeletikParser>skeletik({
 		'/': (lex, bone) => [closeEntry(bone), NEXT_STATE_COMMENT_AWAIT],
 		'\n': (lex, bone) => closeEntry(bone),
 		' ': '->',
-		'': fail
+		'': (lex, bone) => {debugger}
 	},
 
 	'inline_attr': {

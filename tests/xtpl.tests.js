@@ -606,4 +606,19 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('foo(12.toString(36))', ['12.toString(36)']);
 		testMe('foo(factory(null, now()), name)', ['factory(null, now())', 'name']);
 	});
+
+	QUnit.test('class.foo', function (assert) {
+		function testMe(tpl, classes) {
+			var frag = xtplParser(tpl);
+			
+			assert.equal(frag.length, 1, tpl);
+			assert.equal(frag.first.length, 0);
+			assert.deepEqual(frag.first.raw, {name: 'div', attrs: {class: classes}});
+		}
+
+		testMe('div\n  class.foo: 1', '{1 ? "foo" : ""}');
+		testMe('.foo\n  class.bar: 2', 'foo {2 ? "bar" : ""}');
+		testMe('.foo\n  class.bar: 2\n  class.baz: 3', 'foo {2 ? "bar" : ""} {3 ? "baz" : ""}');
+		testMe('.foo\n  class.&_bar: 3', 'foo {3 ? "foo_bar" : ""}');
+	});
 });
