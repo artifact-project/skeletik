@@ -28,6 +28,27 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 
 	xtplParser = xtplParser['default'];
 
+	QUnit.test('empty', function (assert) {
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 0);
+		}
+
+		testMe('');
+		testMe(' ');
+		testMe('\t');
+		testMe('\n');
+		testMe('\t \n');
+	});
+
+	QUnit.test('!html', function (assert) {
+		var frag = xtplParser('!html');
+		assert.equal(frag.length, 1);
+		assert.equal(frag.first.type, 'dtd');
+		assert.equal(frag.first.length, 0);
+		assert.deepEqual(frag.first.raw, {value: 'html'});
+	});
+
 	QUnit.test('| foo-bar', function (assert) {
 		var frag = xtplParser('| foo-bar');
 		assert.equal(frag.length, 1);
@@ -36,19 +57,19 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.first.raw, {value: 'foo-bar'});
 	});
 
-	QUnit.test('!html5', function (assert) {
-		var frag = xtplParser('!html5');
-		assert.equal(frag.length, 1);
-		assert.equal(frag.first.type, 'dtd');
-		assert.equal(frag.first.length, 0);
-		assert.deepEqual(frag.first.raw, {value: 'html5'});
-	});
-
 	QUnit.test('b', function (assert) {
-		var frag = xtplParser('b');
-		assert.equal(frag.length, 1);
-		assert.equal(frag.first.type, 'tag');
-		assert.deepEqual(frag.first.raw, {name: 'b', attrs: {}});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1, tpl);
+			assert.equal(frag.first.type, 'tag');
+			assert.equal(frag.first.length, 0);
+			assert.deepEqual(frag.first.raw, {name: 'b', attrs: {}});
+		}
+
+		testMe('b');
+		testMe(' b ');
+		testMe(' b{}');
+		testMe(' b {}');
 	});
 
 	QUnit.test('b | foo', function (assert) {
@@ -66,16 +87,26 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('b |foo');
 		testMe('b| foo');
 		testMe('b | foo');
+		testMe('b | foo');
+		testMe('b{| foo\n}');
+		testMe('b {| foo\n}');
+		testMe('b\n  | foo');
 	});
 
 	QUnit.test('#foo', function (assert) {
-		var frag = xtplParser('#foo');
-		assert.equal(frag.length, 1);
-		assert.equal(frag.first.type, 'tag');
-		assert.deepEqual(frag.first.raw, {name: 'div', attrs: {id: 'foo'}});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1, tpl);
+			assert.equal(frag.first.type, 'tag');
+			assert.deepEqual(frag.first.raw, {name: 'div', attrs: {id: 'foo'}});
+		}
+
+		testMe('#foo');
+		testMe('#foo{}');
+		testMe('#foo {}');
 	});
 
-	QUnit.test('#foo//bar or .foo//bar', function (assert) {
+	QUnit.test('div | #foo | .foo + comment', function (assert) {
 		function testMe(tpl, attrs) {
 			var frag = xtplParser(tpl);
 			assert.equal(frag.length, 2);
@@ -85,6 +116,8 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 			assert.deepEqual(frag.last.raw, {value: 'bar'});
 		}
 
+		testMe('div//bar', {});
+
 		testMe('#foo//bar', {id: 'foo'});
 		testMe('#foo // bar', {id: 'foo'});
 
@@ -93,10 +126,16 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	});
 
 	QUnit.test('.foo', function (assert) {
-		var frag = xtplParser('.foo');
-		assert.equal(frag.length, 1);
-		assert.equal(frag.first.type, 'tag');
-		assert.deepEqual(frag.first.raw, {name: 'div', attrs: {class: 'foo'}});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1);
+			assert.equal(frag.first.type, 'tag');
+			assert.deepEqual(frag.first.raw, {name: 'div', attrs: {class: 'foo'}});
+		}
+
+		testMe('.foo');
+		testMe('.foo{}');
+		testMe('.foo {}');
 	});
 
 	QUnit.test('.foo.bar', function (assert) {
@@ -125,6 +164,15 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe('i.bar#foo', 'i');
 	});
 
+	QUnit.test('#foo.bar#baz (Duplicate attribute \"id\" is not allowed)', function (assert) {
+		try {
+			xtplParser('#foo.bar#baz');
+			assert.ok(false);
+		} catch (err) {
+			assert.equal(err.message, 'Duplicate attribute \"id\" is not allowed');
+		}
+	});
+
 	QUnit.test('.foo.bar[baz]', function (assert) {
 		var frag = xtplParser('.foo.bar[baz]');
 		assert.deepEqual(frag.length, 1);
@@ -138,11 +186,16 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	});
 
 	QUnit.test('.foo > %-bar > .&-baz', function (assert) {
-		var frag = xtplParser('.foo > %-bar > .&-baz');
-		assert.deepEqual(frag.first.raw.attrs, {class: 'foo'});
-		assert.deepEqual(frag.first.first.type, 'hidden:class');
-		assert.deepEqual(frag.first.first.raw.attrs, {class: 'foo-bar'});
-		assert.deepEqual(frag.first.first.first.raw.attrs, {class: 'foo-bar-baz'});
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			assert.deepEqual(frag.first.raw.attrs, {class: 'foo'}, tpl);
+			assert.deepEqual(frag.first.first.type, 'hidden:class');
+			assert.deepEqual(frag.first.first.raw.attrs, {class: 'foo-bar'});
+			assert.deepEqual(frag.first.first.first.raw.attrs, {class: 'foo-bar-baz'});
+		}
+
+		testMe('.foo>%-bar>.&-baz');
+		testMe('.foo > %-bar > .&-baz');
 	});
 
 	QUnit.test('i.foo.bar | qux', function (assert) {
@@ -301,27 +354,29 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	});
 
 	QUnit.test('a[href=".."] | link', function (assert) {
-		var frag;
-		
-		frag = xtplParser('a[href=".."] | link');
-		assert.deepEqual(frag.length, 1, 'a[href=".."] | link');
-		assert.deepEqual(frag.first.raw, {name: 'a', attrs: {href: '..'}});
-		assert.deepEqual(frag.first.first.raw, {value: 'link'});
+		function testMe(tpl, mode) {
+			var frag = xtplParser(tpl);
+			
+			assert.deepEqual(frag.length, mode || 1, tpl);
+			assert.deepEqual(frag.first.raw, {name: 'a', attrs: {href: '..'}});
+			
+			if (mode === 0) {
+				assert.deepEqual(frag.first.length, 0);
+			} else if (mode === 2) {
+				assert.deepEqual(frag.first.length, 0);
+				assert.deepEqual(frag.last.raw, {value: 'link'});
+			} else {
+				assert.deepEqual(frag.first.length, 1);
+				assert.deepEqual(frag.first.first.raw, {value: 'link'});
+			}
+		}
 
-		frag = xtplParser('a[href=".."]\n| link');
-		assert.deepEqual(frag.length, 2, 'a[href=".."]\\n| link');
-		assert.deepEqual(frag.first.raw, {name: 'a', attrs: {href: '..'}});
-		assert.deepEqual(frag.last.raw, {value: 'link'});
-
-		frag = xtplParser('a[href=".."]{| link\n}', 'a[href=".."]{| link\\n}');
-		assert.deepEqual(frag.length, 1);
-		assert.deepEqual(frag.first.raw, {name: 'a', attrs: {href: '..'}});
-		assert.deepEqual(frag.first.first.raw, {value: 'link'});
-
-		frag = xtplParser('i{a[href=".."]}', 'i{a[href=".."]}');
-		assert.deepEqual(frag.length, 1);
-		assert.deepEqual(frag.first.raw, {name: 'i', attrs: {}});
-		assert.deepEqual(frag.first.first.raw, {name: 'a', attrs: {href: '..'}});
+		testMe('a[href=".."]|link');
+		testMe('a[href=".."] | link');
+		testMe('a[href=".."]{| link\n}');
+		testMe('a[href=".."]\n  | link');
+		testMe('a[href=".."]', 0);
+		testMe('a[href=".."]\n| link', 2);
 	});
 
 	QUnit.test('indent', function (assert) {

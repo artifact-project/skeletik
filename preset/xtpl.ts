@@ -22,10 +22,8 @@ const ENTER_CODE = 10; // "\n"
 const SPACE_CODE = 32; // " "
 const DOT_CODE = 46; // "."
 const COMMA_CODE = 44; // ","
-const COLON_CODE = 58; // ":"
 const PIPE_CODE = 124; // "|"
 const SLASH_CODE = 47; // "/"
-const QUOTE_CODE = 34; // >>"<<
 const ASTERISK_CODE = 42; // "*"
 const OPEN_BRACE_CODE = 123; // "{"
 const CLOSE_BRACE_CODE = 125; // "}"
@@ -41,30 +39,38 @@ const PLUS_CODE = 43; // "+"
 const KEYWORDS = {};
 let _keyword;
 
-const NEXT_STATE_KEYWORD = '>KEYWORD';
-const NEXT_STATE_ENTRY_GROUP = 'entry_group';
-const NEXT_STATE_COMMENT_AWAIT = 'comment_await';
-const NEXT_STATE_ID_OR_CLASS = 'id_or_class';
-const NEXT_STATE_INLINE_ATTR = 'inline_attr';
+const ENTRY_GROUP_STATE = 'entry_group';
+const COMMENT_AWAIT_STATE = 'comment_await';
+const ID_OR_CLASS_STATE = 'id_or_class';
+const INLINE_ATTR_STATE = 'inline_attr';
 
-const NAME_STOPPER_NEXT_STATE = {
-	[DOT_CODE]: NEXT_STATE_ID_OR_CLASS,
-	[HASHTAG_CODE]: NEXT_STATE_ID_OR_CLASS,
+const TO_KEYWORD_STATE = '>KEYWORD';
+const TO_ENTRY_GROUP_STATE = `>${ENTRY_GROUP_STATE}`;
+
+const STOPPER_TO_STATE = {
+	[ENTER_CODE]: (parent, token) => closeEntry(token ? addEntry(parent, token) : parent),
+	[SLASH_CODE]: (parent, token) => [closeEntry(token ? addEntry(parent, token) : parent), COMMENT_AWAIT_STATE],
+
+	[DOT_CODE]: (parent, token):string|[Bone,string] => {
+		if (token === 'class') {
+			return 'class_attr';
+		} else {
+			return [addEntry(parent, token), ID_OR_CLASS_STATE];
+		}
+	},
+	
+	[HASHTAG_CODE]: ID_OR_CLASS_STATE,
 
 	[PIPE_CODE]: 'text',
-	[OPEN_BRACKET_CODE]: NEXT_STATE_INLINE_ATTR,
+	[OPEN_BRACKET_CODE]: INLINE_ATTR_STATE,
 	[EQUAL_CODE]: DEFINE_TYPE,
 	[OPEN_PARENTHESIS_CODE]: 'fn-call',
 
-	[GT_CODE]: `>${NEXT_STATE_ENTRY_GROUP}`,
-	[PLUS_CODE]: `>${NEXT_STATE_ENTRY_GROUP}`
-};
+	[OPEN_BRACE_CODE]: TO_ENTRY_GROUP_STATE,
+	[CLOSE_BRACE_CODE]: TO_ENTRY_GROUP_STATE,
 
-const ID_OR_CLASS_STOPPER_NEXT_STATE = {
-	[OPEN_BRACE_CODE]: `>${NEXT_STATE_ENTRY_GROUP}`, // {
-	[OPEN_BRACKET_CODE]: NEXT_STATE_INLINE_ATTR, // [
-	[PIPE_CODE]: 'text', // |
-	[SPACE_CODE]: NEXT_STATE_ENTRY_GROUP
+	[GT_CODE]: TO_ENTRY_GROUP_STATE,
+	[PLUS_CODE]: TO_ENTRY_GROUP_STATE
 };
 
 const DEFINE_TYPES = {
@@ -73,9 +79,11 @@ const DEFINE_TYPES = {
 	[OPEN_PARENTHESIS_CODE]: ['parenthesis', CLOSE_PARENTHESIS_CODE], // ()
 };
 
+const nameStoppersWithSpace = ['|', '/', '(', '>', '+', '{', '}', '=', '\n'];
+const nameStoppersWithoutSpace = ['.', '#', '['];
 
-const TAB_MODE = 'tab';
-const SPACE_MODE = 'space';
+const TAB_INDENT = 'tab';
+const SPACE_INDENT = 'space';
 
 let shortAttrType:number;
 let inlineAttrName:string;
@@ -112,14 +120,21 @@ function setAttr(bone:Bone, name:string, value:string, glue?:string):void {
 }
 
 function takeShortAttrValue(lex:Lexer, bone:Bone):void {
-	setShortAttrValue(bone, shortAttrType === DOT_CODE ? 'class' : 'id', lex.takeToken());
+	const token = lex.takeToken().trim();
+	const attr = shortAttrType === DOT_CODE ? 'class' : 'id';
+
+	if (attr === 'id' && bone.raw.attrs.id) {
+		lex.error('Duplicate attribute "id" is not allowed', bone);
+	}
+
+	setShortAttrValue(bone, attr, token);
 }
 
 function setShortAttrValue(bone:Bone, name:string, value:string, expression?:string, selfNesting?:boolean) {
 	let newValue = value;
 
-	if (name === 'class' && /^[&%]/.test(value)) {
-		newValue = (selfNesting ? bone : bone.parent).raw.attrs.class.split(' ').shift() + value.substr(1);
+	if (name === 'class' && /^[&%]/.test(newValue)) {
+		newValue = (selfNesting ? bone : bone.parent).raw.attrs.class.split(' ').shift() + newValue.substr(1);
 	}
 
 	if (expression) {
@@ -160,18 +175,6 @@ function closeGroup(lex:Lexer, bone:Bone):Bone {
 	return closeEntry(bone, true);
 }
 
-function openOrCloseGroup(lex:Lexer, parent:Bone):Bone|[Bone,string] {
-	var token = lex.getToken().trim();
-	var nextParent = (KEYWORDS[token] ? addKeyword : addEntry)(parent, token);
-
-	if (lex.code === OPEN_BRACE_CODE) {
-		markAsGroup(lex, nextParent);
-		return KEYWORDS[token] ? [nextParent, keywords.start(token)] : nextParent;
-	} else {
-		return closeGroup(lex, nextParent);
-	}
-}
-
 export function parseJS(lex:Lexer, stopper:number, initialOffset:number = 0) {
 	const start = lex.idx + initialOffset;
 	let offset = 0;
@@ -210,32 +213,32 @@ export function parseJSCallArgs(lex:Lexer) {
 
 
 function fail(lex:Lexer, bone?:Bone):void {
-	console.info(lex.state);
-	lex.error(`Invalid character: \`${lex.getChar()}\``, bone);
+	lex.error(`Invalid character: \`${lex.getChar()}\`, state: ${lex.state}`, bone);
 }
 
 // Create parser
 export default <SkeletikParser>skeletik({
-	'$ws': [' ', '\t', '\n'],
+	'$stn': [' ', '\t', '\n'],
 	'$id_or_class': ['.', '#'],
 	'$name': ['a-z', 'A-Z', '-', '_', '0-9'],
-	'$name_stopper': ['.', '#', '|', '\n', '/', '[', '(', '>', '+', '{', '}', '='],
+	'$name_stopper': nameStoppersWithoutSpace.concat(nameStoppersWithSpace),
+	'$name_stopper_after_space': nameStoppersWithSpace,
 	'$attr': ['a-z', 'A-Z', '-', '_', ':', '@', '0-9'],
 	'$var_name_start': ['_', 'a-z', 'A-Z'],
 	'$var_name_next': ['_', 'a-z', 'A-Z', '0-9'],
 	'$define_type': ['[', '{', '('],
 }, {
 	'': {
+		'$stn': '->',
 		'!': 'dtd',
+		'|': 'text',
+		'/': COMMENT_AWAIT_STATE,
+		'}': closeGroup,
 		'$name': '!entry',
 		'$id_or_class': (lex:Lexer, parent:Bone):[Bone,string] => {
 			shortAttrType = lex.code;
-			return [addEntry(parent, 'div'), NEXT_STATE_ID_OR_CLASS];
+			return [addEntry(parent, 'div'), ID_OR_CLASS_STATE];
 		},
-		'/': NEXT_STATE_COMMENT_AWAIT,
-		'|': 'text',
-		'}': closeGroup,
-		'$ws': '->',
 		'%': '!hidden_class',
 		'': fail
 	},
@@ -253,7 +256,7 @@ export default <SkeletikParser>skeletik({
 
 	'entry_stopper:await': {
 		' ': '->',
-		'$name_stopper': '>entry_stopper',
+		'$name_stopper_after_space': '>entry_stopper',
 		'': (lex, parent) => {
 			const token = lex.takeToken().trim();
 			return KEYWORDS[token] ? [addKeyword(parent, token), keywords.start(token)] : fail(lex, parent);
@@ -261,27 +264,24 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'entry_stopper': {
-		'{': openOrCloseGroup,
-		'}': openOrCloseGroup,
-		'$name_stopper': (lex:Lexer, parent:Bone):string|Bone|[Bone, string] => {
-			const code:number = lex.code;
-			const token:string = lex.takeToken().trim();
+		'': (lex:Lexer, parent:Bone):string|Bone|[Bone, string] => {
+			const code = lex.code;
+			const token = lex.takeToken().trim();
+			const handler = STOPPER_TO_STATE[code];
+
+			if (window['DEBUG'])
+				debugger;
+
+			shortAttrType = code;
 
 			if (KEYWORDS[token]) {
 				return [addKeyword(parent, token), keywords.start(token)];
-			} else if (token === 'class') {
-				return 'class_attr';
-			} else if (ENTER_CODE === code) {
-				return closeEntry(addEntry(parent, token));
-			} else if (SLASH_CODE === code) {
-				return [closeEntry(addEntry(parent, token)), NEXT_STATE_COMMENT_AWAIT];
+			} else if (typeof handler === 'string') {
+				return [token ? addEntry(parent, token) : parent, handler];
 			} else {
-				const next:string = NAME_STOPPER_NEXT_STATE[code];
-				shortAttrType = code;
-				return [addEntry(parent, token), next];
+				return handler(parent, token, lex);
 			}
-		},
-		'': fail
+		}
 	},
 
 	'class_attr': {
@@ -292,35 +292,25 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'hidden_class': {
-		'$ws': (lex, bone) => {
-			shortAttrType = DOT_CODE;
+		'$name_stopper': (lex, bone) => {
 			bone = add(bone, HIDDEN_CLASS_TYPE, {attrs: {}});
-			takeShortAttrValue(lex, bone);
-			return [bone, '>entry_group'];
+			setShortAttrValue(bone, 'class', lex.takeToken().trim());
+
+			return [bone, SPACE_CODE === lex.code ? 'entry_stopper:await' : TO_ENTRY_GROUP_STATE];
 		}
 	},
 
 	'id_or_class': {
-		'$id_or_class': (lex, bone) => {
-			takeShortAttrValue(lex, bone);
-			shortAttrType = lex.code;
-			return '-->';
-		},
-		'': (lex, bone) => {
+		'$name_stopper': (lex, bone) => {
 			const code = lex.code;
-			let retVal:any = ID_OR_CLASS_STOPPER_NEXT_STATE[code] || '->';
 			
-			if (ENTER_CODE === code) {
-				retVal = closeEntry(bone);
-			} else if (CLOSE_BRACE_CODE === code) {
-				retVal = closeGroup(lex, bone);
-			} else if (SLASH_CODE === code) {
-				retVal = [closeEntry(bone), NEXT_STATE_COMMENT_AWAIT]
-			}
+			takeShortAttrValue(lex, bone);
+			shortAttrType = code;
 
-			(retVal !== '->') && takeShortAttrValue(lex, bone);
-
-			return retVal;
+			return (HASHTAG_CODE === code || DOT_CODE === code)
+				? '-->'
+				: (SPACE_CODE === code ? 'entry_stopper:await' : '>entry_stopper')
+			;
 		}
 	},
 
@@ -330,7 +320,7 @@ export default <SkeletikParser>skeletik({
 		'>': (lex, bone) => { (bone as XBone).shorty = true; },
 		'+': (lex, bone) => bone.parent,
 		'|': 'text',
-		'/': (lex, bone) => [closeEntry(bone), NEXT_STATE_COMMENT_AWAIT],
+		'/': (lex, bone) => [closeEntry(bone), COMMENT_AWAIT_STATE],
 		'\n': (lex, bone) => closeEntry(bone),
 		' ': '->',
 		'': (lex, bone) => {debugger}
@@ -339,7 +329,7 @@ export default <SkeletikParser>skeletik({
 	'inline_attr': {
 		']': (lex, bone) => {
 			setInlineAttr(lex, bone);
-			return lex.peek(+1) === OPEN_BRACKET_CODE ? NEXT_STATE_INLINE_ATTR : NEXT_STATE_ENTRY_GROUP;
+			return lex.peek(+1) === OPEN_BRACKET_CODE ? INLINE_ATTR_STATE : ENTRY_GROUP_STATE;
 		},
 		'=': (lex, bone) => {
 			setInlineAttr(lex, bone);
@@ -373,11 +363,9 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'inline_attr_next': {
-		'[': NEXT_STATE_INLINE_ATTR,
-		'{': markAsGroup,
-		'}': closeGroup,
-		'\n': (lex, bone) => closeEntry(bone),
-		' ': NEXT_STATE_ENTRY_GROUP,
+		'[': INLINE_ATTR_STATE,
+		' ': 'entry_stopper:await',
+		'$name_stopper': TO_ENTRY_GROUP_STATE,
 		'': fail
 	},
 
@@ -456,7 +444,7 @@ export default <SkeletikParser>skeletik({
 			if (COMMA_CODE === code || SPACE_CODE === code || raw.closed === code) {
 				const token = lex.takeToken().trim();
 				token && raw.attrs.push(token);
-				return raw.closed === code ? NEXT_STATE_ENTRY_GROUP : '-->';
+				return raw.closed === code ? ENTRY_GROUP_STATE : '-->';
 			} else {
 				fail(lex, bone)
 			}
@@ -467,7 +455,7 @@ export default <SkeletikParser>skeletik({
 		'': (lex, bone) => {
 			bone.type = CALL_TYPE;
 			bone.raw.args = parseJSCallArgs(lex);
-			return NEXT_STATE_ENTRY_GROUP;
+			return ENTRY_GROUP_STATE;
 		}
 	}
 }, {
@@ -503,7 +491,7 @@ export default <SkeletikParser>skeletik({
 			lex.error('Mixed spaces and tabs');
 		}
 
-		const mode = lex.indent.tab ? TAB_MODE : (lex.indent.space ? SPACE_MODE : indentMode);
+		const mode = lex.indent.tab ? TAB_INDENT : (lex.indent.space ? SPACE_INDENT : indentMode);
 
 		if (indentMode === void 0) {
 			indentMode = mode;
@@ -601,7 +589,7 @@ export const keywords = (function () {
 			_keyword = KEYWORDS[name];
 			_variant = 0;
 
-			return NEXT_STATE_KEYWORD;
+			return TO_KEYWORD_STATE;
 		},
 
 		add(name:string, details:string|string[], options:any = {}) {
@@ -611,7 +599,7 @@ export const keywords = (function () {
 			KEYWORDS[name] = {
 				attr(bone:Bone, value:string) {
 					bone.raw.attrs[_attr] = value;
-					return NEXT_STATE_KEYWORD;
+					return TO_KEYWORD_STATE;
 				},
 
 				parse(lex:Lexer, bone:Bone) {
@@ -630,7 +618,7 @@ export const keywords = (function () {
 						_cursor++;
 					} else if (seqCode === SPACE_CODE) {
 						_cursor++;
-						return NEXT_STATE_KEYWORD;
+						return TO_KEYWORD_STATE;
 					} else if (code === SPACE_CODE && prevSeqCode === SPACE_CODE) {
 						// Продолжаем пропускать пробелы
 					} else {

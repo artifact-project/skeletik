@@ -53,7 +53,8 @@ export class LexerSyntaxError extends SyntaxError {
  * @param input 
  */
 export class Lexer {
-	public state:string;
+	public state:string = '';
+	public prevState:string = '';
     public line:number = 1;
 	public column:number = 1;
 	public idx:number = 0;
@@ -345,6 +346,7 @@ class Skeletik {
 
 				if (state !== _state) {
 					emit("start");
+					lex.prevState = _state;
 					_state = state;
 				}
 
