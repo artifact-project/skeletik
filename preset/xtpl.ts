@@ -16,6 +16,7 @@ export const KEYWORD_TYPE = 'keyword';
 export const HIDDEN_CLASS_TYPE = 'hidden:class';
 export const DEFINE_TYPE = 'define';
 export const CALL_TYPE = 'call';
+export const EXPRESSION_TYPE = 'expression';
 
 // Codes
 const ENTER_CODE = 10; // "\n"
@@ -24,6 +25,7 @@ const DOT_CODE = 46; // "."
 const COMMA_CODE = 44; // ","
 const PIPE_CODE = 124; // "|"
 const SLASH_CODE = 47; // "/"
+const BACKSLASH_CODE = 92; // "\"
 const ASTERISK_CODE = 42; // "*"
 const OPEN_BRACE_CODE = 123; // "{"
 const CLOSE_BRACE_CODE = 125; // "}"
@@ -61,7 +63,7 @@ const STOPPER_TO_STATE = {
 	
 	[HASHTAG_CODE]: ID_OR_CLASS_STATE,
 
-	[PIPE_CODE]: 'text',
+	[PIPE_CODE]: 'text:await',
 	[OPEN_BRACKET_CODE]: INLINE_ATTR_STATE,
 	[EQUAL_CODE]: DEFINE_TYPE,
 	[OPEN_PARENTHESIS_CODE]: 'fn-call',
@@ -104,7 +106,7 @@ function addComment(parent:Bone, value:string):void {
 	add(parent, COMMENT_TYPE, {value: value.trim()});
 }
 
-function addEntry(parent:Bone, name:string):Bone {
+function addEntry(parent:Bone, name):Bone {
 	return add(parent, TAG_TYPE, {name: name, attrs: {}});
 }
 
@@ -216,6 +218,28 @@ function fail(lex:Lexer, bone?:Bone):void {
 	lex.error(`Invalid character: \`${lex.getChar()}\`, state: ${lex.state}`, bone);
 }
 
+let currentExpression
+
+function expressionMixin(getter:(bone:Bone) => any[], states) {
+	states['$'] = (lex:Lexer, bone) => {
+		if (lex.prevCode !== BACKSLASH_CODE && lex.peek(+1) === OPEN_BRACE_CODE) {
+			const state = lex.state;
+			const token = lex.takeToken();
+			const expr = parseJS(lex, CLOSE_BRACE_CODE).slice(2);
+			const list = getter(bone);
+
+			token && list.push(token);
+			list.push({type: EXPRESSION_TYPE, value: expr});
+
+			return '>' + state;
+		}
+
+		return '->';
+	};
+
+	return states;
+}
+
 // Create parser
 export default <SkeletikParser>skeletik({
 	'$stn': [' ', '\t', '\n'],
@@ -231,7 +255,7 @@ export default <SkeletikParser>skeletik({
 	'': {
 		'$stn': '->',
 		'!': 'dtd',
-		'|': 'text',
+		'|': 'text:await',
 		'/': COMMENT_AWAIT_STATE,
 		'}': closeGroup,
 		'$name': '!entry',
@@ -240,11 +264,20 @@ export default <SkeletikParser>skeletik({
 			return [addEntry(parent, 'div'), ID_OR_CLASS_STATE];
 		},
 		'%': '!hidden_class',
+		'$': 'var_or_tag',
 		'': fail
 	},
 
 	'dtd': {
 		'\n': (lex, bone) => { add(bone, DTD_TYPE, {value: lex.takeToken()}); }
+	},
+
+	'var_or_tag': {
+		'{': (lex, parent) => {
+			const expr = parseJS(lex, CLOSE_BRACE_CODE, 1);
+			return [addEntry(parent, [{type: 'expression', value: expr}]), '>entry'];
+		},
+		'': fail
 	},
 
 	'entry': {
@@ -319,7 +352,7 @@ export default <SkeletikParser>skeletik({
 		'}': closeGroup,
 		'>': (lex, bone) => { (bone as XBone).shorty = true; },
 		'+': (lex, bone) => bone.parent,
-		'|': 'text',
+		'|': 'text:await',
 		'/': (lex, bone) => [closeEntry(bone), COMMENT_AWAIT_STATE],
 		'\n': (lex, bone) => closeEntry(bone),
 		' ': '->',
@@ -389,12 +422,38 @@ export default <SkeletikParser>skeletik({
 		}
 	},
 
-	'text': {
-		'\n': (lex, bone) => {
-			addText(bone, lex.takeToken());
-			return (bone as XBone).group ? bone : closeEntry(bone, false, true);
-		}
+	'text:await': {
+		' ': '->',
+		'': (lex, parent) => {
+			lex.takeChar();
+			return [add(parent, TEXT_TYPE, {value: ''}), '>text'];
+		},
 	},
+
+	'text': expressionMixin((bone) => {
+		let value = bone.raw.value;
+		(typeof value === 'string') && (bone.raw.value = value = []);
+		return value;
+	}, {
+		'\n': (lex, bone) => {
+			const token = lex.takeToken();
+			const parent = bone.parent;
+
+			if (token) {
+				const value = bone.raw.value;
+
+				if (typeof value === 'string') {
+					bone.raw.value += token;
+				} else {
+					value.push(token);
+				}
+			}
+
+			return (parent.type === ROOT_TYPE || (parent as XBone).group)
+				? parent
+				: closeEntry(parent, false, true);
+		}
+	}),
 
 	'KEYWORD': {
 		'': (lex, bone) => _keyword.parse(lex, bone)

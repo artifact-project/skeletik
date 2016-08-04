@@ -57,6 +57,23 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		assert.deepEqual(frag.first.raw, {value: 'foo-bar'});
 	});
 
+	QUnit.test('| foo${bar}', function (assert) {
+		function testMe(tpl, value) {
+			var frag = xtplParser(tpl);
+			assert.equal(frag.length, 1, tpl);
+			assert.equal(frag.first.type, 'text');
+			assert.equal(frag.first.length, 0);
+			assert.deepEqual(frag.first.raw, {value: value});
+		}
+
+		testMe('|${bar}', [{type: 'expression', value: 'bar'}]);
+		testMe('| ${bar}', [{type: 'expression', value: 'bar'}]);
+		testMe('| foo${bar}', ['foo', {type: 'expression', value: 'bar'}]);
+		testMe('| ${bar}foo', [{type: 'expression', value: 'bar'}, 'foo']);
+		testMe('| foo${bar}baz', ['foo', {type: 'expression', value: 'bar'}, 'baz']);
+		testMe('| foo${bar}baz${qux}', ['foo', {type: 'expression', value: 'bar'}, 'baz', {type: 'expression', value: 'qux'}]);
+	});
+
 	QUnit.test('b', function (assert) {
 		function testMe(tpl) {
 			var frag = xtplParser(tpl);
@@ -71,6 +88,19 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 		testMe(' b{}');
 		testMe(' b {}');
 	});
+
+	// QUnit.test('tag-${x}', function (assert) {
+	// 	function testMe(tpl, name) {
+	// 		var frag = xtplParser(tpl);
+	// 		assert.equal(frag.length, 1, tpl);
+	// 		assert.equal(frag.first.type, 'tag');
+	// 		assert.equal(frag.first.length, 0);
+	// 		assert.deepEqual(frag.first.raw, {name: name, attrs: {}});
+	// 	}
+
+	// 	testMe('${x}', [{type: 'expression', value: 'x'}]);
+	// });
+	// return;
 
 	QUnit.test('b | foo', function (assert) {
 		function testMe(tpl) {
