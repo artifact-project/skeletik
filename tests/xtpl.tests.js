@@ -105,7 +105,7 @@ define(['qunit', 'skeletik/preset/xtpl'], function (QUnit, xtplParser) {
 	QUnit.test('b | foo', function (assert) {
 		function testMe(tpl) {
 			var frag = xtplParser(tpl);
-			assert.equal(frag.length, 1);
+			assert.equal(frag.length, 1, tpl);
 			assert.equal(frag.first.type, 'tag');
 			assert.deepEqual(frag.first.raw, {name: 'b', attrs: {}});
 			assert.deepEqual(frag.first.length, 1);

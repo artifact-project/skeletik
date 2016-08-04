@@ -50,16 +50,16 @@ const TO_KEYWORD_STATE = '>KEYWORD';
 const TO_ENTRY_GROUP_STATE = `>${ENTRY_GROUP_STATE}`;
 
 const STOPPER_TO_STATE = {
-	[ENTER_CODE]: (parent, token) => closeEntry(token ? addEntry(parent, token) : parent),
-	[SLASH_CODE]: (parent, token) => [closeEntry(token ? addEntry(parent, token) : parent), COMMENT_AWAIT_STATE],
-
-	[DOT_CODE]: (parent, token):string|[Bone,string] => {
-		if (token === 'class') {
-			return 'class_attr';
-		} else {
-			return [addEntry(parent, token), ID_OR_CLASS_STATE];
-		}
+	[ENTER_CODE]: {
+		close: true
 	},
+	
+	[SLASH_CODE]: {
+		to: COMMENT_AWAIT_STATE,
+		close: true,
+	},
+
+	[DOT_CODE]: (token) => (token === 'class') ? {add: false, to: 'class_attr'} : {to: ID_OR_CLASS_STATE},
 	
 	[HASHTAG_CODE]: ID_OR_CLASS_STATE,
 
@@ -72,7 +72,7 @@ const STOPPER_TO_STATE = {
 	[CLOSE_BRACE_CODE]: TO_ENTRY_GROUP_STATE,
 
 	[GT_CODE]: TO_ENTRY_GROUP_STATE,
-	[PLUS_CODE]: TO_ENTRY_GROUP_STATE
+	[PLUS_CODE]: TO_ENTRY_GROUP_STATE,
 };
 
 const DEFINE_TYPES = {
@@ -300,7 +300,12 @@ export default <SkeletikParser>skeletik({
 		'': (lex:Lexer, parent:Bone):string|Bone|[Bone, string] => {
 			const code = lex.code;
 			const token = lex.takeToken().trim();
-			const handler = STOPPER_TO_STATE[code];
+			let state = STOPPER_TO_STATE[code];
+
+			switch (typeof state) {
+				case 'string': state = {to: state}; break;
+				case 'function': state = (state as Function)(token); break;
+			}
 
 			if (window['DEBUG'])
 				debugger;
@@ -309,11 +314,11 @@ export default <SkeletikParser>skeletik({
 
 			if (KEYWORDS[token]) {
 				return [addKeyword(parent, token), keywords.start(token)];
-			} else if (typeof handler === 'string') {
-				return [token ? addEntry(parent, token) : parent, handler];
-			} else {
-				return handler(parent, token, lex);
+			} else if (token && state.add !== false) {
+				parent = addEntry(parent, token);
 			}
+
+			return [state.close ? closeEntry(parent) : parent, state.to || ''];
 		}
 	},
 
