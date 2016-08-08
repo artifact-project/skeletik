@@ -1,4 +1,4 @@
-import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
+import skeletik, {Lexer, Bone, SkeletikParser, SkeletikState} from '../skeletik';
 import expressionParser from './expression';
 
 export interface XBone extends Bone {
@@ -17,6 +17,7 @@ export const HIDDEN_CLASS_TYPE = 'hidden:class';
 export const DEFINE_TYPE = 'define';
 export const CALL_TYPE = 'call';
 export const EXPRESSION_TYPE = 'expression';
+export const GROUP_TYPE = 'group';
 
 // Codes
 const ENTER_CODE = 10; // "\n"
@@ -92,6 +93,8 @@ let inlineAttrName:string;
 let indentMode:string;
 let indentSize:number;
 let prevIndent:number;
+let tagNameChain:any[] = [];
+let attrValueChain:any[] = [];
 
 function add(parent:Bone, type:string, raw?:any):Bone {
 	return parent.add(type, raw).last;
@@ -114,11 +117,30 @@ function addKeyword(parent:Bone, name:string):Bone {
 	return add(parent, KEYWORD_TYPE, {name: name, attrs: {}});
 }
 
-function setAttr(bone:Bone, name:string, value:string, glue?:string):void {
-	const curValue = bone.raw.attrs[name];
-	const newValue = arguments.length === 4 ? (curValue ? curValue + glue : '') + value : value;
+function setAttr(bone:Bone, name:string, value:string):void {
+	let values = bone.raw.attrs[name];
 
-	bone.raw.attrs[name] = newValue;
+	if (values === void 0) {
+		values = bone.raw.attrs[name] = [];
+	}
+
+	values.push(value);
+}
+
+function addAttrValue(lex:Lexer, bone:Bone, name:string, values:any[]):void {
+	let list = bone.raw.attrs[name];
+	
+	if (list === void 0) {
+		list = bone.raw.attrs[name] = [];
+	}
+
+	attrValueChain = [];
+
+	if (name === 'id' && list.length) {
+		lex.error('Duplicate attribute "id" is not allowed', bone);
+	}
+
+	list.push(values);
 }
 
 function takeShortAttrValue(lex:Lexer, bone:Bone):void {
@@ -129,7 +151,7 @@ function takeShortAttrValue(lex:Lexer, bone:Bone):void {
 		lex.error('Duplicate attribute "id" is not allowed', bone);
 	}
 
-	setShortAttrValue(bone, attr, token);
+	token && setAttr(bone, attr, token);
 }
 
 function setShortAttrValue(bone:Bone, name:string, value:string, expression?:string, selfNesting?:boolean) {
@@ -143,13 +165,17 @@ function setShortAttrValue(bone:Bone, name:string, value:string, expression?:str
 		newValue = `{${expression} ? "${newValue}" : ""}`;
 	}
 
-	setAttr(bone, name, newValue, ' ');
+	setAttr(bone, name, newValue);
 }
 
-function setInlineAttr(lex:Lexer, bone:Bone):void {
+function takeInlineAttrName(lex:Lexer, bone) {
 	inlineAttrName = lex.takeToken();
 	!inlineAttrName && lex.error('Empty attribute name', bone);
-	bone.raw.attrs[inlineAttrName] = true;
+}
+
+function setInlineAttr(lex:Lexer, bone:Bone, values):void {
+	takeInlineAttrName(lex, bone);
+	addAttrValue(lex, bone, inlineAttrName, values)
 }
 
 function closeEntry(bone:Bone, group?:boolean, shorty?:boolean):Bone {
@@ -213,15 +239,14 @@ export function parseJSCallArgs(lex:Lexer) {
 	return args;
 }
 
-
 function fail(lex:Lexer, bone?:Bone):void {
 	lex.error(`Invalid character: \`${lex.getChar()}\`, state: ${lex.state}`, bone);
 }
 
-let currentExpression
+function expressionMixin(getter:(bone?:Bone) => any[], states):SkeletikState {
+	const mixStates = {};
 
-function expressionMixin(getter:(bone:Bone) => any[], states) {
-	states['$'] = (lex:Lexer, bone) => {
+	mixStates['$'] = (lex:Lexer, bone) => {
 		if (lex.prevCode !== BACKSLASH_CODE && lex.peek(+1) === OPEN_BRACE_CODE) {
 			const state = lex.state;
 			const token = lex.takeToken();
@@ -229,7 +254,7 @@ function expressionMixin(getter:(bone:Bone) => any[], states) {
 			const list = getter(bone);
 
 			token && list.push(token);
-			list.push({type: EXPRESSION_TYPE, value: expr});
+			list.push({type: EXPRESSION_TYPE, raw: expr});
 
 			return '>' + state;
 		}
@@ -237,7 +262,15 @@ function expressionMixin(getter:(bone:Bone) => any[], states) {
 		return '->';
 	};
 
-	return states;
+	for (const key in states) {
+		mixStates[key] = states[key];
+	}
+
+	return <SkeletikState>mixStates;
+}
+
+function inheritEntry(type) {
+	return {type: 'inherit', raw: type};
 }
 
 // Create parser
@@ -275,17 +308,18 @@ export default <SkeletikParser>skeletik({
 	'var_or_tag': {
 		'{': (lex, parent) => {
 			const expr = parseJS(lex, CLOSE_BRACE_CODE, 1);
-			return [addEntry(parent, [{type: 'expression', value: expr}]), '>entry'];
+			tagNameChain.push({type: EXPRESSION_TYPE, raw: expr});
+			return '>entry';
 		},
 		'': fail
 	},
 
-	'entry': {
+	'entry': expressionMixin(() => tagNameChain, {
 		' ': '>entry_stopper:await',
 		'$name': '->',
 		'$name_stopper': '>entry_stopper',
 		'': fail
-	},
+	}),
 
 	'entry_stopper:await': {
 		' ': '->',
@@ -314,35 +348,55 @@ export default <SkeletikParser>skeletik({
 
 			if (KEYWORDS[token]) {
 				return [addKeyword(parent, token), keywords.start(token)];
-			} else if (token && state.add !== false) {
-				parent = addEntry(parent, token);
+			} else if (state.add !== false) {
+				if (tagNameChain.length) {
+					token && tagNameChain.push(token);
+					parent = addEntry(parent, tagNameChain);
+					tagNameChain = [];
+				} else if (token) {
+					parent = addEntry(parent, token);
+				}
 			}
 
 			return [state.close ? closeEntry(parent) : parent, state.to || ''];
 		}
 	},
 
-	'class_attr': {
+	'class_attr': expressionMixin(() => attrValueChain, {
+		'&': (lex, bone) => (attrValueChain.push(inheritEntry('self')), '-->'),
 		':': (lex, bone) => {
-			inlineAttrName = lex.takeToken();
-			setShortAttrValue(bone, 'class', inlineAttrName, parseJS(lex, ENTER_CODE, 1), true);
+			const token = lex.takeToken();
+
+			token && attrValueChain.push(token);
+			
+			addAttrValue(lex, bone, 'class', [{
+				type: GROUP_TYPE,
+				test: parseJS(lex, ENTER_CODE, 1),
+				raw: attrValueChain
+			}]);
+
+			attrValueChain = [];
 		}
-	},
+	}),
 
 	'hidden_class': {
 		'$name_stopper': (lex, bone) => {
 			bone = add(bone, HIDDEN_CLASS_TYPE, {attrs: {}});
-			setShortAttrValue(bone, 'class', lex.takeToken().trim());
+			addAttrValue(lex, bone, 'class', [inheritEntry('parent'), lex.takeToken(1).trim()]);
 
 			return [bone, SPACE_CODE === lex.code ? 'entry_stopper:await' : TO_ENTRY_GROUP_STATE];
 		}
 	},
 
-	'id_or_class': {
+	'id_or_class': expressionMixin(() => attrValueChain, {
+		'&': (lex, bone) => (attrValueChain.push(inheritEntry('parent')), '-->'),
 		'$name_stopper': (lex, bone) => {
 			const code = lex.code;
+			const token = lex.takeToken().trim();
+
+			token && attrValueChain.push(token);
+			addAttrValue(lex, bone, shortAttrType === DOT_CODE ? 'class' : 'id', attrValueChain);
 			
-			takeShortAttrValue(lex, bone);
 			shortAttrType = code;
 
 			return (HASHTAG_CODE === code || DOT_CODE === code)
@@ -350,7 +404,7 @@ export default <SkeletikParser>skeletik({
 				: (SPACE_CODE === code ? 'entry_stopper:await' : '>entry_stopper')
 			;
 		}
-	},
+	}),
 
 	'entry_group': {
 		'{': markAsGroup,
@@ -366,13 +420,10 @@ export default <SkeletikParser>skeletik({
 
 	'inline_attr': {
 		']': (lex, bone) => {
-			setInlineAttr(lex, bone);
-			return lex.peek(+1) === OPEN_BRACKET_CODE ? INLINE_ATTR_STATE : ENTRY_GROUP_STATE;
+			setInlineAttr(lex, bone, [true]);
+			return 'inline_attr_next';
 		},
-		'=': (lex, bone) => {
-			setInlineAttr(lex, bone);
-			return 'inline_attr_value_await';
-		},
+		'=': (lex, bone) => (takeInlineAttrName(lex, bone), 'inline_attr_value_await'),
 		'$ws': fail,
 		'': '->'
 	},
@@ -382,10 +433,12 @@ export default <SkeletikParser>skeletik({
 		'': fail
 	},
 
-	'inline_attr_value': {
+	'inline_attr_value': expressionMixin(() => attrValueChain, {
 		'"': (lex, bone) => {
 			if (lex.prevCode !== SLASH_CODE) {
-				setAttr(bone, inlineAttrName, lex.takeToken());
+				const token = lex.takeToken();
+				token && attrValueChain.push(token);
+				addAttrValue(lex, bone, inlineAttrName, attrValueChain);
 				return 'inline_attr_value_end';
 			}
 
@@ -393,7 +446,7 @@ export default <SkeletikParser>skeletik({
 		},
 		'\n': fail,
 		'': '->'
-	},
+	}),
 
 	'inline_attr_value_end': {
 		']': 'inline_attr_next',
@@ -547,7 +600,9 @@ export default <SkeletikParser>skeletik({
 	},
 
 	onindent: (lex, bone) => {
-		if (lex.code === ENTER_CODE) {
+		const code = lex.code;
+
+		if (ENTER_CODE === code || (SLASH_CODE === code && lex.peek(+1) === SLASH_CODE)) {
 			return;
 		}
 
