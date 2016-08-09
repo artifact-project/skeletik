@@ -50,6 +50,13 @@ const INLINE_ATTR_STATE = 'inline_attr';
 const TO_KEYWORD_STATE = '>KEYWORD';
 const TO_ENTRY_GROUP_STATE = `>${ENTRY_GROUP_STATE}`;
 
+interface INextState {
+	to?:string;
+	add?:boolean;
+	close?:boolean;
+	(token:string):INextState;
+}
+
 const STOPPER_TO_STATE = {
 	[ENTER_CODE]: {
 		close: true
@@ -334,11 +341,11 @@ export default <SkeletikParser>skeletik({
 		'': (lex:Lexer, parent:Bone):string|Bone|[Bone, string] => {
 			const code = lex.code;
 			const token = lex.takeToken().trim();
-			let state = STOPPER_TO_STATE[code];
+			let state = <INextState><any>STOPPER_TO_STATE[code];
 
 			switch (typeof state) {
-				case 'string': state = {to: state}; break;
-				case 'function': state = (state as Function)(token); break;
+				case 'string': state = <INextState><any>{to: state}; break;
+				case 'function': state = state(token); break;
 			}
 
 			if (window['DEBUG'])
