@@ -458,11 +458,24 @@ define(['qunit', 'skeletik/preset/xtpl', './qunit.assert.xtplequal'], function (
 		assert.xtplEqual(frag.nodes[2].raw, {name: 'div', attrs: {class: 'foo'}});
 	});
 
-	QUnit.test('input[type="radio"][checked]', function (assert) {
-		var frag = xtplParser('input[type="radio"][checked]');
+	QUnit.test('input[checked]', function (assert) {
+		var frag = xtplParser('input[checked]');
 		
 		assert.equal(frag.length, 1);
-		assert.xtplEqual(frag.first.raw, {name: 'input', attrs: {type: 'radio', checked: "true"}});
+		assert.xtplEqual(frag.first.raw, {name: 'input', attrs: {checked: "true"}});
+	});
+
+	QUnit.test('input[type="radio"][checked] / input[type="radio" checked]', function (assert) {
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			
+			assert.equal(frag.length, 1, tpl);
+			assert.xtplEqual(frag.first.raw, {name: 'input', attrs: {type: 'radio', checked: "true"}});
+		}
+
+		testMe('input[type="radio"][checked]');
+		testMe('input[type="radio" checked]');
+		testMe('input[checked type="radio"]');
 	});
 
 	QUnit.test('a[href=".."] | link', function (assert) {
