@@ -50,6 +50,7 @@ const COMMENT_AWAIT_STATE = 'comment_await';
 const ID_OR_CLASS_STATE = 'id_or_class';
 const INLINE_ATTR_STATE = 'inline_attr';
 const INLINE_ATTR_STATE_AWAIT = 'inline_attr_await';
+const TEXT_AWAIT = 'text:await';
 
 const TO_KEYWORD_STATE = '>KEYWORD';
 const TO_ENTRY_GROUP_STATE = `>${ENTRY_GROUP_STATE}`;
@@ -75,7 +76,7 @@ const STOPPER_TO_STATE = {
 	
 	[HASHTAG_CODE]: ID_OR_CLASS_STATE,
 
-	[PIPE_CODE]: 'text:await',
+	[PIPE_CODE]: TEXT_AWAIT,
 	[OPEN_BRACKET_CODE]: INLINE_ATTR_STATE_AWAIT,
 	[EQUAL_CODE]: DEFINE_TYPE,
 	[OPEN_PARENTHESIS_CODE]: 'fn-call',
@@ -301,7 +302,7 @@ export default <SkeletikParser>skeletik({
 	'': {
 		'$stn': '->',
 		'!': 'dtd',
-		'|': 'text:await',
+		'|': TEXT_AWAIT,
 		'/': COMMENT_AWAIT_STATE,
 		'}': closeGroup,
 		'$name': '!entry',
@@ -429,7 +430,7 @@ export default <SkeletikParser>skeletik({
 		'}': closeGroup,
 		'>': (lex, bone) => { (bone as XBone).shorty = true; },
 		'+': (lex, bone) => bone.parent,
-		'|': 'text:await',
+		'|': TEXT_AWAIT,
 		'/': (lex, bone) => [closeEntry(bone), COMMENT_AWAIT_STATE],
 		'\n': (lex, bone) => closeEntry(bone),
 		' ': '->',
