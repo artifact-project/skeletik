@@ -36,6 +36,7 @@ const OPEN_PARENTHESIS_CODE = 40; // "("
 const CLOSE_PARENTHESIS_CODE = 41; // ")"
 const HASHTAG_CODE = 35; // "#"
 const EQUAL_CODE = 61; // "="
+const LT_CODE = 60; // "<"
 const GT_CODE = 62; // ">"
 const PLUS_CODE = 43; // "+"
 
@@ -108,11 +109,6 @@ function add(parent:Bone, type:string, raw?:any):Bone {
 	return parent.add(type, raw).last;
 }
 
-function addText(parent:Bone, value:string):void {
-	value = value.trim();
-	value && add(parent, TEXT_TYPE, {value: value});
-}
-
 function addComment(parent:Bone, value:string):void {
 	add(parent, COMMENT_TYPE, {value: value.trim()});
 }
@@ -123,6 +119,18 @@ function addEntry(parent:Bone, name):Bone {
 
 function addKeyword(parent:Bone, name:string):Bone {
 	return add(parent, KEYWORD_TYPE, {name: name, attrs: {}});
+}
+
+function addToText(bone:Bone, token:string):void {
+	if (token) {
+		const value = bone.raw.value;
+
+		if (typeof value === 'string') {
+			bone.raw.value += token;
+		} else {
+			value.push(token);
+		}
+	}
 }
 
 function setAttr(bone:Bone, name:string, value:string):void {
@@ -350,9 +358,6 @@ export default <SkeletikParser>skeletik({
 				case 'function': state = state(token); break;
 			}
 
-			if (window['DEBUG'])
-				debugger;
-
 			shortAttrType = code;
 
 			if (KEYWORDS[token]) {
@@ -424,7 +429,7 @@ export default <SkeletikParser>skeletik({
 		'/': (lex, bone) => [closeEntry(bone), COMMENT_AWAIT_STATE],
 		'\n': (lex, bone) => closeEntry(bone),
 		' ': '->',
-		'': (lex, bone) => {debugger}
+		'': fail // todo: покрыть тестом
 	},
 
 	'inline_attr_await': {
@@ -520,8 +525,14 @@ export default <SkeletikParser>skeletik({
 	'text:await': {
 		' ': '->',
 		'': (lex, parent) => {
-			lex.takeChar();
-			return [add(parent, TEXT_TYPE, {value: ''}), '>text'];
+			const multiline = (lex.takeChar() === '>' && PIPE_CODE === lex.prevCode);
+
+			if (multiline) {
+				lex.lastIdx++;
+				!(parent as XBone).group && ((parent as XBone).shorty = true);
+			}
+
+			return [add(parent, TEXT_TYPE, {multiline, value: ''}), '>text'];
 		},
 	},
 
@@ -530,19 +541,23 @@ export default <SkeletikParser>skeletik({
 		(typeof value === 'string') && (bone.raw.value = value = []);
 		return value;
 	}, {
-		'\n': (lex, bone) => {
-			const token = lex.takeToken();
-			const parent = bone.parent;
-
-			if (token) {
-				const value = bone.raw.value;
-
-				if (typeof value === 'string') {
-					bone.raw.value += token;
-				} else {
-					value.push(token);
-				}
+		'|': (lex, bone):string|[Bone, string] => {
+			if (bone.raw.multiline && LT_CODE === lex.prevCode) {
+				addToText(bone, lex.takeToken(0, -1));
+				return ENTRY_GROUP_STATE;
+			} else {
+				return '->';
 			}
+		},
+
+		'\n': (lex, bone) => {
+			if (bone.raw.multiline) {
+				return '->';
+			}
+
+			addToText(bone, lex.takeToken());
+
+			const parent = bone.parent;
 
 			return (parent.type === ROOT_TYPE || (parent as XBone).group)
 				? parent
@@ -639,7 +654,11 @@ export default <SkeletikParser>skeletik({
 	onindent: (lex, bone) => {
 		const code = lex.code;
 
-		if (ENTER_CODE === code || (SLASH_CODE === code && lex.peek(+1) === SLASH_CODE)) {
+		if (
+			ENTER_CODE === code ||
+			lex.state === 'text' ||
+			(SLASH_CODE === code && lex.peek(+1) === SLASH_CODE)
+		) {
 			return;
 		}
 
