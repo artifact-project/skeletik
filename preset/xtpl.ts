@@ -1,6 +1,4 @@
-import skeletik, {Lexer, Bone, SkeletikParser, SkeletikState} from '../skeletik';
-import expressionParser from './expression';
-import xmlParser from './xml';
+import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
 import * as utils from './utils';
 
 export interface XBone extends Bone {
@@ -108,11 +106,16 @@ let prevIndent:number;
 let tagNameChain:any[] = [];
 let attrValueChain:any[] = [];
 
+// Shortcut methods
 const add = utils.add;
 const addTag = utils.addTag;
 const addComment = utils.addComment;
 const addKeyword = utils.addKeyword;
 const fail = utils.fail;
+const parseXML = utils.parseXML;
+const parseJS = utils.parseJS;
+const parseJSCallArgs = utils.parseJSCallArgs;
+const expressionMixin = utils.expressionMixin;
 
 function addToText(bone:Bone, token:string):void {
 	if (token) {
@@ -210,76 +213,6 @@ function markAsGroup(lex:Lexer, bone:Bone):string {
 
 function closeGroup(lex:Lexer, bone:Bone):Bone {
 	return closeEntry(bone, true);
-}
-
-function parseXML(lex:Lexer):Bone[] {
-	return xmlParser.capture(lex, {
-		onpeek(lex, bone) {
-			return !(bone.type === ROOT_TYPE && (lex.prevCode === PIPE_CODE && lex.code === HASHTAG_CODE));
-		}
-	}).nodes;
-}
-
-export function parseJS(lex:Lexer, stopper:number, initialOffset:number = 0) {
-	const start = lex.idx + initialOffset;
-	let offset = 0;
-
-	// Валидируем выражение
-	expressionParser.capture(lex, {
-		onpeek(lex, bone) {
-			offset = lex.code === stopper ? 0 : 1;
-			return !(bone.type === ROOT_TYPE && (lex.code === stopper || lex.prevCode === stopper));
-		}
-	});
-
-	return lex.input.substring(start, lex.idx - offset).trim();
-}
-
-export function parseJSCallArgs(lex:Lexer) {
-	const args = [];
-	let idx = lex.idx;
-
-	expressionParser.capture(lex, {
-		onpeek(lex, bone) {
-			const exit = (bone.type === ROOT_TYPE && (lex.code === CLOSE_PARENTHESIS_CODE));
-
-			if (exit || bone.type === ROOT_TYPE && lex.code === COMMA_CODE) {
-				const token = lex.input.substring(idx, lex.idx).trim();
-				token && args.push(token);
-				idx = lex.idx + 1;
-			}
-
-			return !exit;
-		}
-	});
-
-	return args;
-}
-
-function expressionMixin(getter:(bone?:Bone) => any[], states):SkeletikState {
-	const mixStates = {};
-
-	mixStates['$'] = (lex:Lexer, bone) => {
-		if (lex.prevCode !== BACKSLASH_CODE && lex.peek(+1) === OPEN_BRACE_CODE) {
-			const state = lex.state;
-			const token = lex.takeToken();
-			const expr = parseJS(lex, CLOSE_BRACE_CODE).slice(2);
-			const list = getter(bone);
-
-			token && list.push(token);
-			list.push({type: EXPRESSION_TYPE, raw: expr});
-
-			return '>' + state;
-		}
-
-		return '->';
-	};
-
-	for (const key in states) {
-		mixStates[key] = states[key];
-	}
-
-	return <SkeletikState>mixStates;
 }
 
 function inheritEntry(type) {

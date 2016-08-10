@@ -12,10 +12,26 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 
 	QUnit.test('одна текстовая нода', function (assert) {
 		var frag = xmlParser('foo-bar');
+
 		assert.equal(frag.length, 1);
 		assert.equal(frag.first.length, 0);
 		assert.equal(frag.first.type, 'text');
 		assert.equal(frag.first.raw.value, 'foo-bar');
+	});
+
+	QUnit.test('text + ${x}', function (assert) {
+		function testMe(tpl, values, length) {
+			var frag = xmlParser(tpl);
+
+			assert.equal(frag.length, length || 1, tpl);
+			assert.equal(frag.nodes[0].type, 'text');
+			assert.deepEqual(frag.nodes[0].raw, {value: values});
+		}
+
+		testMe('${x}', [{raw: 'x', type: 'expression'}]);
+		testMe('foo-${x}', ['foo-', {raw: 'x', type: 'expression'}]);
+		testMe('${x}-bar', [{raw: 'x', type: 'expression'}, '-bar']);
+		testMe('${x}<i/>', [{raw: 'x', type: 'expression'}], 2);
 	});
 	
 	// <img/>

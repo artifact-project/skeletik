@@ -8,16 +8,29 @@ const CLOSE_BRACKET_CODE = utils.CLOSE_BRACKET_CODE; // ]
 
 let _attr;
 let _slashes = 0;
+let _textChain = [];
 
 // Shortcut methods
+const add = utils.add;
 const addTag = utils.addTag;
-const addText = utils.addText;
 const addComment = utils.addComment;
 const addCDATA = utils.addCDATA;
 const fail = utils.fail;
+const expressionMixin = utils.expressionMixin;
 
 function setBooleanAttr(lex:Lexer, bone:Bone):void {
 	bone.raw.attrs[lex.takeToken()] = true;
+}
+
+function addText(parent:Bone, token) {
+
+	if (_textChain.length) {
+		token && _textChain.push(token);
+		add(parent, utils.TEXT_TYPE, {value: _textChain});
+		_textChain = [];
+	} else if (token) {
+		add(parent, utils.TEXT_TYPE, {value: token});
+	}
 }
 
 // Export parser
@@ -29,7 +42,7 @@ export default <SkeletikParser>skeletik({
 }, {
 	'': {
 		'<': 'entry:open',
-		'': '!text'
+		'': '>text'
 	},
 
 	'entry:open': {
@@ -87,13 +100,13 @@ export default <SkeletikParser>skeletik({
 		}
 	},
 
-	'text': {
+	'text': expressionMixin(() => _textChain, {
 		'<': (lex:Lexer, parent:Bone) => {
 			addText(parent, lex.takeToken());
 			return 'entry:open';
 		},
 		'': '->'
-	},
+	}),
 
 	'tag:name': {
 		'$name': '->',
