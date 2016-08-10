@@ -1,17 +1,18 @@
 import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
 import * as types from './types';
+import * as codes from './codes';
 
-// Types
+// Shortcut types
 const ROOT_TYPE = types.ROOT_TYPE;
 const TAG_TYPE = types.TAG_TYPE;
 const TEXT_TYPE = types.TEXT_TYPE;
 const COMMENT_TYPE = types.COMMENT_TYPE;
 const CDATA_TYPE = types.CDATA_TYPE;
 
-// Character codes
-const QUOTE_CODE = 34;
-const MINUS_CODE = 45;
-const RIGHT_BRACE_CODE = 93;
+// Shortcut codes
+const QUOTE_CODE = codes.QUOTE_CODE; // "
+const MINUS_CODE = codes.MINUS_CODE; // -
+const CLOSE_BRACKET_CODE = codes.CLOSE_BRACKET_CODE; // ] 
 
 let _attr;
 let _slashes = 0;
@@ -105,7 +106,7 @@ export default <SkeletikParser>skeletik({
 
 	'cdata:value': {
 		'>': function (lex:Lexer, parent:Bone) {
-			if (lex.prevCode === RIGHT_BRACE_CODE && lex.peek(-2) === RIGHT_BRACE_CODE) {
+			if (lex.prevCode === CLOSE_BRACKET_CODE && lex.peek(-2) === CLOSE_BRACKET_CODE) {
 				addCDATA(parent, lex.takeToken(0, -2));
 				return '';
 			} else {

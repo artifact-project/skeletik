@@ -1,13 +1,14 @@
 import skeletik, {Lexer, Bone, SkeletikParser, SkeletikState} from '../skeletik';
 import expressionParser from './expression';
 import * as types from './types';
+import * as codes from './codes';
 
 export interface XBone extends Bone {
 	group?:boolean;
 	shorty?:boolean;
 }
 
-// Bone types
+// Shortcut types
 const ROOT_TYPE = types.ROOT_TYPE;
 const DTD_TYPE = types.DTD_TYPE;
 const TAG_TYPE = types.TAG_TYPE;
@@ -20,26 +21,26 @@ const CALL_TYPE = types.CALL_TYPE;
 const EXPRESSION_TYPE = types.EXPRESSION_TYPE;
 const GROUP_TYPE = types.GROUP_TYPE;
 
-// Codes
-const ENTER_CODE = 10; // "\n"
-const SPACE_CODE = 32; // " "
-const DOT_CODE = 46; // "."
-const COMMA_CODE = 44; // ","
-const PIPE_CODE = 124; // "|"
-const SLASH_CODE = 47; // "/"
-const BACKSLASH_CODE = 92; // "\"
-const ASTERISK_CODE = 42; // "*"
-const OPEN_BRACE_CODE = 123; // "{"
-const CLOSE_BRACE_CODE = 125; // "}"
-const OPEN_BRACKET_CODE = 91; // "["
-const CLOSE_BRACKET_CODE = 93; // "]"
-const OPEN_PARENTHESIS_CODE = 40; // "("
-const CLOSE_PARENTHESIS_CODE = 41; // ")"
-const HASHTAG_CODE = 35; // "#"
-const EQUAL_CODE = 61; // "="
-const LT_CODE = 60; // "<"
-const GT_CODE = 62; // ">"
-const PLUS_CODE = 43; // "+"
+// Shortcut codes
+const ENTER_CODE = codes.ENTER_CODE; // "\n"
+const SPACE_CODE = codes.SPACE_CODE; // " "
+const DOT_CODE = codes.DOT_CODE; // "."
+const COMMA_CODE = codes.COMMA_CODE; // ","
+const PIPE_CODE = codes.PIPE_CODE; // "|"
+const SLASH_CODE = codes.SLASH_CODE; // "/"
+const BACKSLASH_CODE = codes.BACKSLASH_CODE; // "\"
+const ASTERISK_CODE = codes.ASTERISK_CODE; // "*"
+const OPEN_BRACE_CODE = codes.OPEN_BRACE_CODE; // "{"
+const CLOSE_BRACE_CODE = codes.CLOSE_BRACE_CODE; // "}"
+const OPEN_BRACKET_CODE = codes.OPEN_BRACKET_CODE; // "["
+const CLOSE_BRACKET_CODE = codes.CLOSE_BRACKET_CODE; // "]"
+const OPEN_PARENTHESIS_CODE = codes.OPEN_PARENTHESIS_CODE; // "("
+const CLOSE_PARENTHESIS_CODE = codes.CLOSE_PARENTHESIS_CODE; // ")"
+const HASHTAG_CODE = codes.HASHTAG_CODE; // "#"
+const EQUAL_CODE = codes.EQUAL_CODE; // "="
+const LT_CODE = codes.LT_CODE; // "<"
+const GT_CODE = codes.GT_CODE; // ">"
+const PLUS_CODE = codes.PLUS_CODE; // "+"
 
 const KEYWORDS = {};
 let _keyword;
