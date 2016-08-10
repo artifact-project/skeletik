@@ -40,11 +40,26 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 		
 		QUnit.test(html + 'x' + pad.length, function (assert) {
 			var frag = xmlParser(html);
+
 			assert.equal(frag.length, 1, 'root.length');
 			assert.equal(frag.first.length, 0, 'inner.length');
 			assert.equal(frag.first.type, 'tag');
 			assert.deepEqual(frag.first.raw, {name: 'img', attrs: {}});
 		});
+	});
+
+	QUnit.test('<${x}/>', function (assert) {
+		function testMe(tpl, values) {
+			var frag = xmlParser(tpl);
+
+			assert.equal(frag.length, 1, tpl);
+			assert.equal(frag.nodes[0].type, 'tag');
+			assert.deepEqual(frag.nodes[0].raw, {name: values, attrs: {}});
+		}
+
+		testMe('<${x}/>', [{raw: 'x', type: 'expression'}]);
+		testMe('<foo-${x}/>', ['foo-', {raw: 'x', type: 'expression'}]);
+		testMe('<${x}-bar/>', [{raw: 'x', type: 'expression'}, '-bar']);
 	});
 
 	// <img src/>

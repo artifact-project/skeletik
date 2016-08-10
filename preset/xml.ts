@@ -6,9 +6,9 @@ const QUOTE_CODE = utils.QUOTE_CODE; // "
 const MINUS_CODE = utils.MINUS_CODE; // -
 const CLOSE_BRACKET_CODE = utils.CLOSE_BRACKET_CODE; // ] 
 
-let _attr;
-let _slashes = 0;
-let _textChain = [];
+let slashes = 0;
+let attrName;
+let tokensChain = [];
 
 // Shortcut methods
 const add = utils.add;
@@ -23,14 +23,16 @@ function setBooleanAttr(lex:Lexer, bone:Bone):void {
 }
 
 function addText(parent:Bone, token) {
-	if (_textChain.length) {
-		token && _textChain.push(token);
-		add(parent, utils.TEXT_TYPE, {value: _textChain});
-		_textChain = [];
+	if (tokensChain.length) {
+		token && tokensChain.push(token);
+		add(parent, utils.TEXT_TYPE, {value: tokensChain});
+		tokensChain = [];
 	} else if (token) {
 		add(parent, utils.TEXT_TYPE, {value: token});
 	}
 }
+
+const TO_TAG_NAME_STATE = '>tag:name';
 
 // Export parser
 export default <SkeletikParser>skeletik({
@@ -45,7 +47,8 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'entry:open': {
-		'$name_start': '!tag:name',
+		'$': TO_TAG_NAME_STATE,
+		'$name_start': TO_TAG_NAME_STATE,
 		'/': 'tag:close',
 		'!': 'comment-or-cdata',
 		'': fail
@@ -99,7 +102,7 @@ export default <SkeletikParser>skeletik({
 		}
 	},
 
-	'text': expressionMixin(() => _textChain, {
+	'text': expressionMixin(() => tokensChain, {
 		'<': (lex:Lexer, parent:Bone) => {
 			addText(parent, lex.takeToken());
 			return 'entry:open';
@@ -107,17 +110,17 @@ export default <SkeletikParser>skeletik({
 		'': '->'
 	}),
 
-	'tag:name': {
+	'tag:name': expressionMixin(() => tokensChain, {
 		'$name': '->',
 
 		'/': (lex:Lexer, parent:Bone) => {
-			addTag(parent, lex.takeToken());
+			addTag(parent, lex.takeToken(), tokensChain);
 			return 'tag:end';
 		},
 
-		'>': (lex:Lexer, parent:Bone) => [addTag(parent, lex.takeToken()), ''],
-		'$ws': (lex:Lexer, parent:Bone) => [addTag(parent, lex.takeToken()), 'tag:attrs']
-	},
+		'>': (lex:Lexer, parent:Bone) => [addTag(parent, lex.takeToken(), tokensChain), ''],
+		'$ws': (lex:Lexer, parent:Bone) => [addTag(parent, lex.takeToken(), tokensChain), 'tag:attrs']
+	}),
 
 	'tag:close': {
 		'$name': '->',
@@ -161,7 +164,7 @@ export default <SkeletikParser>skeletik({
 		},
 
 		'=': (lex:Lexer) => {
-			_attr = lex.takeToken();
+			attrName = lex.takeToken();
 			return 'tag:attr:value:await';
 		},
 
@@ -170,7 +173,7 @@ export default <SkeletikParser>skeletik({
 	
 	'tag:attr:value:await': {
 		'"': () => {
-			_slashes = 0;
+			slashes = 0;
 			return 'tag:attr:value:read';
 		},
 		'': fail
@@ -178,24 +181,24 @@ export default <SkeletikParser>skeletik({
 
 	'tag:attr:value:read': {
 		'\\': () => {
-			_slashes++;
+			slashes++;
 			return '->';
 		},
 
 		'"': (lex:Lexer, bone:Bone) => {
 			if (lex.code === QUOTE_CODE) { // chr: "
-				if (!(_slashes % 2)) {
-					bone.raw.attrs[_attr] = lex.takeToken();
+				if (!(slashes % 2)) {
+					bone.raw.attrs[attrName] = lex.takeToken();
 					return 'tag:attrs';
 				}
 			}
 	
-			_slashes = 0;
+			slashes = 0;
 			return '->';
 		},
 
 		'': () => {
-			_slashes = 0;
+			slashes = 0;
 			return '->';
 		}
 	}

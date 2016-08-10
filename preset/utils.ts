@@ -47,7 +47,13 @@ export function addComment(parent:Bone, value:string):void {
 	add(parent, COMMENT_TYPE, {value: value.trim()});
 }
 
-export function addTag(parent:Bone, name):Bone {
+export function addTag(parent:Bone, name, tokens?:any[]):Bone {
+	if (tokens.length) {
+		name && tokens.push(name);
+		name = tokens.slice(0);
+		tokens.length = 0;
+	}
+
 	return add(parent, TAG_TYPE, {name: name, attrs: {}});
 }
 
