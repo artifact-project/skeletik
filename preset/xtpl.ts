@@ -111,6 +111,7 @@ const add = utils.add;
 const addTag = utils.addTag;
 const addComment = utils.addComment;
 const addKeyword = utils.addKeyword;
+const fail = utils.fail;
 
 function addToText(bone:Bone, token:string):void {
 	if (token) {
@@ -252,10 +253,6 @@ export function parseJSCallArgs(lex:Lexer) {
 	});
 
 	return args;
-}
-
-function fail(lex:Lexer, bone?:Bone):void {
-	lex.error(`Invalid character: \`${lex.getChar()}\`, state: ${lex.state}`, bone);
 }
 
 function expressionMixin(getter:(bone?:Bone) => any[], states):SkeletikState {
