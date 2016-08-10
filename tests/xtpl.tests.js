@@ -837,4 +837,30 @@ define(['qunit', 'skeletik/preset/xtpl', './qunit.assert.xtplequal'], function (
 			raw: ['x-', {type: 'expression', raw: 'name'}]
 		}]]);
 	});
+
+	QUnit.test('Whitespaces around tag', function (assert) {
+		function testMe(tpl, before, after, attrs) {
+			var frag = xtplParser(tpl);
+			var raw = {
+				name: 'a',
+				attrs: attrs || {}
+			};
+
+			before && (raw.wsBefore = before);
+			after && (raw.wsAfter = after);
+			
+			assert.equal(frag.length, 1);
+			assert.equal(frag.first.length, 0);
+			assert.deepEqual(frag.first.raw, raw);
+		}
+
+		testMe('a[<]', true)
+		testMe('a[>]', false, true);
+		testMe('a[<>]', true, true);
+		testMe('a[><]', true, true);
+		testMe('a[>][href=".."]', false, true, {href: [['..']]});
+		testMe('a[href=".."][>]', false, true, {href: [['..']]});
+		testMe('a[href=".."][>][alt="!"]', false, true, {href: [['..']], alt: [['!']]});
+		testMe('a[href=".."][<>][alt="!"]', true, true, {href: [['..']], alt: [['!']]});
+	});
 });

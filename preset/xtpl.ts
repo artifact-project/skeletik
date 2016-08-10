@@ -292,6 +292,7 @@ export default <SkeletikParser>skeletik({
 	'$var_name_start': ['_', 'a-z', 'A-Z'],
 	'$var_name_next': ['_', 'a-z', 'A-Z', '0-9'],
 	'$define_type': ['[', '{', '('],
+	'$ws_mode': ['<', '>']
 }, {
 	'': {
 		'$stn': '->',
@@ -429,6 +430,16 @@ export default <SkeletikParser>skeletik({
 	'inline_attr_await': {
 		'$stn': '->',
 		'$name': '!inline_attr',
+		'$ws_mode': '>entry_ws_mode',
+		'': fail
+	},
+
+	'entry_ws_mode': {
+		'$ws_mode': (lex, bone) => {
+			bone.raw[lex.takeChar() === '<' ? 'wsBefore' : 'wsAfter'] = true;
+			return '-->';
+		},
+		']': 'inline_attr_next',
 		'': fail
 	},
 
