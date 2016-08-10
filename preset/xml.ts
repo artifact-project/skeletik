@@ -79,7 +79,7 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'comment:value': {
-		'>': function (lex:Lexer, parent:Bone) {
+		'>': (lex:Lexer, parent:Bone) => {
 			if (lex.prevCode === MINUS_CODE && lex.peek(-2) === MINUS_CODE) {
 				addComment(parent, lex.takeToken().slice(0, -2));
 				return '';
@@ -91,7 +91,7 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'cdata:await': {
-		'': function (lex:Lexer) {
+		'': (lex:Lexer) => {
 			const token = lex.getToken();
 
 			if (token === 'CDATA[') {
@@ -105,7 +105,7 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'cdata:value': {
-		'>': function (lex:Lexer, parent:Bone) {
+		'>': (lex:Lexer, parent:Bone) => {
 			if (lex.prevCode === CLOSE_BRACKET_CODE && lex.peek(-2) === CLOSE_BRACKET_CODE) {
 				addCDATA(parent, lex.takeToken(0, -2));
 				return '';
@@ -116,7 +116,7 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'text': {
-		'<': function (lex:Lexer, parent:Bone) {
+		'<': (lex:Lexer, parent:Bone) => {
 			addText(parent, lex.takeToken());
 			return 'entry:open';
 		},
@@ -126,7 +126,7 @@ export default <SkeletikParser>skeletik({
 	'tag:name': {
 		'$name': '->',
 
-		'/': function (lex:Lexer, parent:Bone) {
+		'/': (lex:Lexer, parent:Bone) => {
 			addTag(parent, lex.takeToken());
 			return 'tag:end';
 		},
@@ -137,7 +137,7 @@ export default <SkeletikParser>skeletik({
 
 	'tag:close': {
 		'$name': '->',
-		'>': function (lex:Lexer, bone:Bone) {
+		'>': (lex:Lexer, bone:Bone) => {
 			const name = lex.takeToken();
 			const mustName = bone.raw && bone.raw.name;
 
@@ -166,17 +166,17 @@ export default <SkeletikParser>skeletik({
 	'tag:attr': {
 		'$attr': '->',
 
-		'$ws': function (lex:Lexer, bone:Bone) {
+		'$ws': (lex:Lexer, bone:Bone) => {
 			setBooleanAttr(lex, bone);
 			return 'tag:attrs';
 		},
 
-		'/': function (lex:Lexer, bone:Bone) {
+		'/': (lex:Lexer, bone:Bone) => {
 			setBooleanAttr(lex, bone);
 			return [bone.parent, 'tag:end'];
 		},
 
-		'=': function (lex:Lexer) {
+		'=': (lex:Lexer) => {
 			_attr = lex.takeToken();
 			return 'tag:attr:value:await';
 		},
@@ -185,7 +185,7 @@ export default <SkeletikParser>skeletik({
 	},
 	
 	'tag:attr:value:await': {
-		'"': function () {
+		'"': () => {
 			_slashes = 0;
 			return 'tag:attr:value:read';
 		},
@@ -193,12 +193,12 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'tag:attr:value:read': {
-		'\\': function () {
+		'\\': () => {
 			_slashes++;
 			return '->';
 		},
 
-		'"': function (lex:Lexer, bone:Bone) {
+		'"': (lex:Lexer, bone:Bone) => {
 			if (lex.code === QUOTE_CODE) { // chr: "
 				if (!(_slashes % 2)) {
 					bone.raw.attrs[_attr] = lex.takeToken();
@@ -210,13 +210,13 @@ export default <SkeletikParser>skeletik({
 			return '->';
 		},
 
-		'': function () {
+		'': () => {
 			_slashes = 0;
 			return '->';
 		}
 	}
 }, {
-	onend: function (lex:Lexer, bone:Bone) {
+	onend: (lex:Lexer, bone:Bone) => {
 		if (lex.lastIdx < lex.length) {
 			addText(bone, lex.getToken(0, -1));
 		}
