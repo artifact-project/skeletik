@@ -1,10 +1,12 @@
 import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
+import * as types from './types';
 
-// Tokens
-export const TAG_TYPE = 'tag';
-export const TEXT_TYPE = 'text';
-export const COMMENT_TYPE = 'comment';
-export const CDATA_TYPE = 'cdata';
+// Types
+const ROOT_TYPE = types.ROOT_TYPE;
+const TAG_TYPE = types.TAG_TYPE;
+const TEXT_TYPE = types.TEXT_TYPE;
+const COMMENT_TYPE = types.COMMENT_TYPE;
+const CDATA_TYPE = types.CDATA_TYPE;
 
 // Character codes
 const QUOTE_CODE = 34;

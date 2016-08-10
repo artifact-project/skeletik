@@ -1,5 +1,6 @@
 import skeletik, {Lexer, Bone, SkeletikParser, SkeletikState} from '../skeletik';
 import expressionParser from './expression';
+import * as types from './types';
 
 export interface XBone extends Bone {
 	group?:boolean;
@@ -7,17 +8,17 @@ export interface XBone extends Bone {
 }
 
 // Bone types
-export const ROOT_TYPE = '#root';
-export const DTD_TYPE = 'dtd';
-export const TAG_TYPE = 'tag';
-export const TEXT_TYPE = 'text';
-export const COMMENT_TYPE = 'comment';
-export const KEYWORD_TYPE = 'keyword';
-export const HIDDEN_CLASS_TYPE = 'hidden:class';
-export const DEFINE_TYPE = 'define';
-export const CALL_TYPE = 'call';
-export const EXPRESSION_TYPE = 'expression';
-export const GROUP_TYPE = 'group';
+const ROOT_TYPE = types.ROOT_TYPE;
+const DTD_TYPE = types.DTD_TYPE;
+const TAG_TYPE = types.TAG_TYPE;
+const TEXT_TYPE = types.TEXT_TYPE;
+const COMMENT_TYPE = types.COMMENT_TYPE;
+const KEYWORD_TYPE = types.KEYWORD_TYPE;
+const HIDDEN_CLASS_TYPE = types.HIDDEN_CLASS_TYPE;
+const DEFINE_TYPE = types.DEFINE_TYPE;
+const CALL_TYPE = types.CALL_TYPE;
+const EXPRESSION_TYPE = types.EXPRESSION_TYPE;
+const GROUP_TYPE = types.GROUP_TYPE;
 
 // Codes
 const ENTER_CODE = 10; // "\n"

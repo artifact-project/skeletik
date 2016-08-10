@@ -1,0 +1,12 @@
+export const ROOT_TYPE = '#root';
+export const DTD_TYPE = 'dtd';
+export const TAG_TYPE = 'tag';
+export const TEXT_TYPE = 'text';
+export const COMMENT_TYPE = 'comment';
+export const KEYWORD_TYPE = 'keyword';
+export const HIDDEN_CLASS_TYPE = 'hidden:class';
+export const DEFINE_TYPE = 'define';
+export const CALL_TYPE = 'call';
+export const EXPRESSION_TYPE = 'expression';
+export const GROUP_TYPE = 'group';
+export const CDATA_TYPE = 'cdata';
