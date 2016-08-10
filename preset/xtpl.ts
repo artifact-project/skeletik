@@ -9,10 +9,7 @@ export interface XBone extends Bone {
 // Shortcut types
 const ROOT_TYPE = utils.ROOT_TYPE;
 const DTD_TYPE = utils.DTD_TYPE;
-const TAG_TYPE = utils.TAG_TYPE;
 const TEXT_TYPE = utils.TEXT_TYPE;
-const COMMENT_TYPE = utils.COMMENT_TYPE;
-const KEYWORD_TYPE = utils.KEYWORD_TYPE;
 const HIDDEN_CLASS_TYPE = utils.HIDDEN_CLASS_TYPE;
 const DEFINE_TYPE = utils.DEFINE_TYPE;
 const CALL_TYPE = utils.CALL_TYPE;
@@ -129,16 +126,6 @@ function addToText(bone:Bone, token:string):void {
 	}
 }
 
-function setAttr(bone:Bone, name:string, value:string):void {
-	let values = bone.raw.attrs[name];
-
-	if (values === void 0) {
-		values = bone.raw.attrs[name] = [];
-	}
-
-	values.push(value);
-}
-
 function addAttrValue(lex:Lexer, bone:Bone, name:string, values:any[]):void {
 	let list = bone.raw.attrs[name];
 	
@@ -153,31 +140,6 @@ function addAttrValue(lex:Lexer, bone:Bone, name:string, values:any[]):void {
 	}
 
 	list.push(values);
-}
-
-function takeShortAttrValue(lex:Lexer, bone:Bone):void {
-	const token = lex.takeToken().trim();
-	const attr = shortAttrType === DOT_CODE ? 'class' : 'id';
-
-	if (attr === 'id' && bone.raw.attrs.id) {
-		lex.error('Duplicate attribute "id" is not allowed', bone);
-	}
-
-	token && setAttr(bone, attr, token);
-}
-
-function setShortAttrValue(bone:Bone, name:string, value:string, expression?:string, selfNesting?:boolean) {
-	let newValue = value;
-
-	if (name === 'class' && /^[&%]/.test(newValue)) {
-		newValue = (selfNesting ? bone : bone.parent).raw.attrs.class.split(' ').shift() + newValue.substr(1);
-	}
-
-	if (expression) {
-		newValue = `{${expression} ? "${newValue}" : ""}`;
-	}
-
-	setAttr(bone, name, newValue);
 }
 
 function takeInlineAttrName(lex:Lexer, bone) {
