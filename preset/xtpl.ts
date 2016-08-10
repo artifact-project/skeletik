@@ -46,6 +46,7 @@ const ENTRY_GROUP_STATE = 'entry_group';
 const COMMENT_AWAIT_STATE = 'comment_await';
 const ID_OR_CLASS_STATE = 'id_or_class';
 const INLINE_ATTR_STATE = 'inline_attr';
+const INLINE_ATTR_STATE_AWAIT = 'inline_attr_await';
 
 const TO_KEYWORD_STATE = '>KEYWORD';
 const TO_ENTRY_GROUP_STATE = `>${ENTRY_GROUP_STATE}`;
@@ -72,7 +73,7 @@ const STOPPER_TO_STATE = {
 	[HASHTAG_CODE]: ID_OR_CLASS_STATE,
 
 	[PIPE_CODE]: 'text:await',
-	[OPEN_BRACKET_CODE]: INLINE_ATTR_STATE,
+	[OPEN_BRACKET_CODE]: INLINE_ATTR_STATE_AWAIT,
 	[EQUAL_CODE]: DEFINE_TYPE,
 	[OPEN_PARENTHESIS_CODE]: 'fn-call',
 
@@ -425,6 +426,12 @@ export default <SkeletikParser>skeletik({
 		'': (lex, bone) => {debugger}
 	},
 
+	'inline_attr_await': {
+		'$stn': '->',
+		'$name': '!inline_attr',
+		'': fail
+	},
+
 	'inline_attr': {
 		']': (lex, bone) => {
 			setInlineAttr(lex, bone, [true]);
@@ -442,6 +449,7 @@ export default <SkeletikParser>skeletik({
 	'inline_attr_next:ws': {
 		'$stn': '->',
 		'$name': '!inline_attr',
+		']': 'inline_attr_next',
 		'': fail
 	},
 
@@ -472,7 +480,7 @@ export default <SkeletikParser>skeletik({
 	},
 
 	'inline_attr_next': {
-		'[': INLINE_ATTR_STATE,
+		'[': INLINE_ATTR_STATE_AWAIT,
 		' ': 'entry_stopper:await',
 		'$name_stopper': TO_ENTRY_GROUP_STATE,
 		'': fail
