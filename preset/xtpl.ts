@@ -1,5 +1,8 @@
 import skeletik, {Lexer, Bone, SkeletikParser, SkeletikState} from '../skeletik';
+
 import expressionParser from './expression';
+import xmlParser from './xml';
+
 import * as types from './types';
 import * as codes from './codes';
 
@@ -221,6 +224,14 @@ function closeGroup(lex:Lexer, bone:Bone):Bone {
 	return closeEntry(bone, true);
 }
 
+function parseXML(lex:Lexer):Bone[] {
+	return xmlParser.capture(lex, {
+		onpeek(lex, bone) {
+			return !(bone.type === ROOT_TYPE && (lex.prevCode === PIPE_CODE && lex.code === HASHTAG_CODE));
+		}
+	}).nodes;
+}
+
 export function parseJS(lex:Lexer, stopper:number, initialOffset:number = 0) {
 	const start = lex.idx + initialOffset;
 	let offset = 0;
@@ -312,8 +323,16 @@ export default <SkeletikParser>skeletik({
 		'}': closeGroup,
 		'$name': '!entry',
 		'$id_or_class': (lex:Lexer, parent:Bone):[Bone,string] => {
-			shortAttrType = lex.code;
-			return [addEntry(parent, 'div'), ID_OR_CLASS_STATE];
+			if (lex.peek(+1) === PIPE_CODE) {
+				// HTML fragment
+				lex.idx += 2;
+				parseXML(lex).forEach(bone => {
+					parent.add(bone);
+				});
+			} else {
+				shortAttrType = lex.code;
+				return [addEntry(parent, 'div'), ID_OR_CLASS_STATE];
+			}
 		},
 		'%': '!hidden_class',
 		'$': 'var_or_tag',

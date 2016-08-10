@@ -134,8 +134,10 @@ export class Bone {
 
     constructor(public type:string, public raw?:any) {}
 
-    add(type:string, raw?:any):this {
-        const bone = new Bone(type, raw);
+	add(bone:Bone):this;
+    add(type:string, raw?:any):this;
+	add(type?, raw?) {
+        const bone = typeof type === 'string' ? new Bone(type, raw) : type;
 
         bone.parent = this;
 

@@ -904,4 +904,17 @@ define(['qunit', 'skeletik/preset/xtpl', './qunit.assert.xtplequal'], function (
 		testMe('p{|> Foo\nBar\n\t\tBaz <|}');
 		testMe('p |> Foo\n${Bar}\n\t\tBaz <|', false, true);
 	});
+
+	QUnit.test('HTML fragment', function (assert) {
+		function testMe(tpl) {
+			var frag = xtplParser(tpl);
+			
+			assert.equal(frag.length, 3, tpl);
+			assert.deepEqual(frag.nodes[0].raw, {value: 'foo '});
+			assert.deepEqual(frag.nodes[1].raw, {name: 'a', attrs: {href: '..'}});
+			assert.deepEqual(frag.nodes[2].raw, {value: ' qux'});
+		}
+
+		testMe('#|foo <a href="..">bar</a> qux|#');
+	});
 });
