@@ -1,51 +1,23 @@
 import skeletik, {Lexer, Bone, SkeletikParser} from '../skeletik';
-import * as types from './types';
-import * as codes from './codes';
-
-// Shortcut types
-const ROOT_TYPE = types.ROOT_TYPE;
-const TAG_TYPE = types.TAG_TYPE;
-const TEXT_TYPE = types.TEXT_TYPE;
-const COMMENT_TYPE = types.COMMENT_TYPE;
-const CDATA_TYPE = types.CDATA_TYPE;
+import * as utils from './utils';
 
 // Shortcut codes
-const QUOTE_CODE = codes.QUOTE_CODE; // "
-const MINUS_CODE = codes.MINUS_CODE; // -
-const CLOSE_BRACKET_CODE = codes.CLOSE_BRACKET_CODE; // ] 
+const QUOTE_CODE = utils.QUOTE_CODE; // "
+const MINUS_CODE = utils.MINUS_CODE; // -
+const CLOSE_BRACKET_CODE = utils.CLOSE_BRACKET_CODE; // ] 
 
 let _attr;
 let _slashes = 0;
 
-function add(parent:Bone, type:string, raw?:any):Bone {
-	return parent.add(type, raw).last;
-}
-
-function addTag(parent:Bone, name:string):Bone {
-	return add(parent, TAG_TYPE, {
-		name: name,
-		attrs: {}
-	});
-}
-
-function addText(parent:Bone, value:string):void {
-	value && add(parent, TEXT_TYPE, {value: value});
-}
-
-function addComment(parent:Bone, value:string):void {
-	add(parent, COMMENT_TYPE, {value: value});
-}
-
-function addCDATA(parent:Bone, value:string):void {
-	add(parent, CDATA_TYPE, {value: value});
-}
+// Shortcut methods
+const addTag = utils.addTag;
+const addText = utils.addText;
+const addComment = utils.addComment;
+const addCDATA = utils.addCDATA;
+const fail = utils.fail;
 
 function setBooleanAttr(lex:Lexer, bone:Bone):void {
 	bone.raw.attrs[lex.takeToken()] = true;
-}
-
-function fail(lex:Lexer, bone:Bone):void {
-	lex.error(`Invalid character \`${lex.getChar()}\``, bone);
 }
 
 // Export parser

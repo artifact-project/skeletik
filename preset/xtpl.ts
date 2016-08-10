@@ -1,10 +1,7 @@
 import skeletik, {Lexer, Bone, SkeletikParser, SkeletikState} from '../skeletik';
-
 import expressionParser from './expression';
 import xmlParser from './xml';
-
-import * as types from './types';
-import * as codes from './codes';
+import * as utils from './utils';
 
 export interface XBone extends Bone {
 	group?:boolean;
@@ -12,38 +9,38 @@ export interface XBone extends Bone {
 }
 
 // Shortcut types
-const ROOT_TYPE = types.ROOT_TYPE;
-const DTD_TYPE = types.DTD_TYPE;
-const TAG_TYPE = types.TAG_TYPE;
-const TEXT_TYPE = types.TEXT_TYPE;
-const COMMENT_TYPE = types.COMMENT_TYPE;
-const KEYWORD_TYPE = types.KEYWORD_TYPE;
-const HIDDEN_CLASS_TYPE = types.HIDDEN_CLASS_TYPE;
-const DEFINE_TYPE = types.DEFINE_TYPE;
-const CALL_TYPE = types.CALL_TYPE;
-const EXPRESSION_TYPE = types.EXPRESSION_TYPE;
-const GROUP_TYPE = types.GROUP_TYPE;
+const ROOT_TYPE = utils.ROOT_TYPE;
+const DTD_TYPE = utils.DTD_TYPE;
+const TAG_TYPE = utils.TAG_TYPE;
+const TEXT_TYPE = utils.TEXT_TYPE;
+const COMMENT_TYPE = utils.COMMENT_TYPE;
+const KEYWORD_TYPE = utils.KEYWORD_TYPE;
+const HIDDEN_CLASS_TYPE = utils.HIDDEN_CLASS_TYPE;
+const DEFINE_TYPE = utils.DEFINE_TYPE;
+const CALL_TYPE = utils.CALL_TYPE;
+const EXPRESSION_TYPE = utils.EXPRESSION_TYPE;
+const GROUP_TYPE = utils.GROUP_TYPE;
 
 // Shortcut codes
-const ENTER_CODE = codes.ENTER_CODE; // "\n"
-const SPACE_CODE = codes.SPACE_CODE; // " "
-const DOT_CODE = codes.DOT_CODE; // "."
-const COMMA_CODE = codes.COMMA_CODE; // ","
-const PIPE_CODE = codes.PIPE_CODE; // "|"
-const SLASH_CODE = codes.SLASH_CODE; // "/"
-const BACKSLASH_CODE = codes.BACKSLASH_CODE; // "\"
-const ASTERISK_CODE = codes.ASTERISK_CODE; // "*"
-const OPEN_BRACE_CODE = codes.OPEN_BRACE_CODE; // "{"
-const CLOSE_BRACE_CODE = codes.CLOSE_BRACE_CODE; // "}"
-const OPEN_BRACKET_CODE = codes.OPEN_BRACKET_CODE; // "["
-const CLOSE_BRACKET_CODE = codes.CLOSE_BRACKET_CODE; // "]"
-const OPEN_PARENTHESIS_CODE = codes.OPEN_PARENTHESIS_CODE; // "("
-const CLOSE_PARENTHESIS_CODE = codes.CLOSE_PARENTHESIS_CODE; // ")"
-const HASHTAG_CODE = codes.HASHTAG_CODE; // "#"
-const EQUAL_CODE = codes.EQUAL_CODE; // "="
-const LT_CODE = codes.LT_CODE; // "<"
-const GT_CODE = codes.GT_CODE; // ">"
-const PLUS_CODE = codes.PLUS_CODE; // "+"
+const ENTER_CODE = utils.ENTER_CODE; // "\n"
+const SPACE_CODE = utils.SPACE_CODE; // " "
+const DOT_CODE = utils.DOT_CODE; // "."
+const COMMA_CODE = utils.COMMA_CODE; // ","
+const PIPE_CODE = utils.PIPE_CODE; // "|"
+const SLASH_CODE = utils.SLASH_CODE; // "/"
+const BACKSLASH_CODE = utils.BACKSLASH_CODE; // "\"
+const ASTERISK_CODE = utils.ASTERISK_CODE; // "*"
+const OPEN_BRACE_CODE = utils.OPEN_BRACE_CODE; // "{"
+const CLOSE_BRACE_CODE = utils.CLOSE_BRACE_CODE; // "}"
+const OPEN_BRACKET_CODE = utils.OPEN_BRACKET_CODE; // "["
+const CLOSE_BRACKET_CODE = utils.CLOSE_BRACKET_CODE; // "]"
+const OPEN_PARENTHESIS_CODE = utils.OPEN_PARENTHESIS_CODE; // "("
+const CLOSE_PARENTHESIS_CODE = utils.CLOSE_PARENTHESIS_CODE; // ")"
+const HASHTAG_CODE = utils.HASHTAG_CODE; // "#"
+const EQUAL_CODE = utils.EQUAL_CODE; // "="
+const LT_CODE = utils.LT_CODE; // "<"
+const GT_CODE = utils.GT_CODE; // ">"
+const PLUS_CODE = utils.PLUS_CODE; // "+"
 
 const KEYWORDS = {};
 let _keyword;
@@ -110,21 +107,10 @@ let prevIndent:number;
 let tagNameChain:any[] = [];
 let attrValueChain:any[] = [];
 
-function add(parent:Bone, type:string, raw?:any):Bone {
-	return parent.add(type, raw).last;
-}
-
-function addComment(parent:Bone, value:string):void {
-	add(parent, COMMENT_TYPE, {value: value.trim()});
-}
-
-function addEntry(parent:Bone, name):Bone {
-	return add(parent, TAG_TYPE, {name: name, attrs: {}});
-}
-
-function addKeyword(parent:Bone, name:string):Bone {
-	return add(parent, KEYWORD_TYPE, {name: name, attrs: {}});
-}
+const add = utils.add;
+const addTag = utils.addTag;
+const addComment = utils.addComment;
+const addKeyword = utils.addKeyword;
 
 function addToText(bone:Bone, token:string):void {
 	if (token) {
@@ -331,7 +317,7 @@ export default <SkeletikParser>skeletik({
 				});
 			} else {
 				shortAttrType = lex.code;
-				return [addEntry(parent, 'div'), ID_OR_CLASS_STATE];
+				return [addTag(parent, 'div'), ID_OR_CLASS_STATE];
 			}
 		},
 		'%': '!hidden_class',
@@ -386,10 +372,10 @@ export default <SkeletikParser>skeletik({
 			} else if (state.add !== false) {
 				if (tagNameChain.length) {
 					token && tagNameChain.push(token);
-					parent = addEntry(parent, tagNameChain);
+					parent = addTag(parent, tagNameChain);
 					tagNameChain = [];
 				} else if (token) {
-					parent = addEntry(parent, token);
+					parent = addTag(parent, token);
 				}
 			}
 

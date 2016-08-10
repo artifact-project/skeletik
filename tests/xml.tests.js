@@ -142,7 +142,7 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 			assert.equal(frag.length, 1, 'root');
 			assert.equal(frag.first.length, 0);
 			assert.equal(frag.first.type, 'comment');
-			assert.deepEqual(frag.first.raw, {value: value});
+			assert.deepEqual(frag.first.raw, {value: value.trim()});
 		});
 	});
 
