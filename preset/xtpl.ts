@@ -430,9 +430,19 @@ export default <SkeletikParser>skeletik({
 			setInlineAttr(lex, bone, [true]);
 			return 'inline_attr_next';
 		},
+		'$stn': (lex, bone) => {
+			setInlineAttr(lex, bone, [true]);
+			return 'inline_attr_next:ws';
+		},
 		'=': (lex, bone) => (takeInlineAttrName(lex, bone), 'inline_attr_value_await'),
 		'$ws': fail,
 		'': '->'
+	},
+
+	'inline_attr_next:ws': {
+		'$stn': '->',
+		'$name': '!inline_attr',
+		'': fail
 	},
 
 	'inline_attr_value_await': {
@@ -456,6 +466,7 @@ export default <SkeletikParser>skeletik({
 	}),
 
 	'inline_attr_value_end': {
+		'$stn': 'inline_attr_next:ws',
 		']': 'inline_attr_next',
 		'': fail
 	},
@@ -646,7 +657,8 @@ export default <SkeletikParser>skeletik({
 
 			prevIndent = indent;
 
-			if (lex.state !== 'multi_comment') {
+			if (lex.state !== 'multi_comment' && lex.state !== 'inline_attr_next:ws') {
+				// todo: delta > 1
 				if (delta === 1 && !(bone as XBone).group) {
 					bone = bone.last;
 				} else if (delta < 0){

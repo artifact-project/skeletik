@@ -474,8 +474,10 @@ define(['qunit', 'skeletik/preset/xtpl', './qunit.assert.xtplequal'], function (
 		}
 
 		testMe('input[type="radio"][checked]');
-		testMe('input[type="radio" checked]');
 		testMe('input[checked type="radio"]');
+		testMe('input[type="radio" checked]');
+		testMe('input[type="radio"\n\t\t\tchecked]');
+		testMe('input[type="radio"\n\t\t\t\t\tchecked]');
 	});
 
 	QUnit.test('a[href=".."] | link', function (assert) {
