@@ -242,7 +242,7 @@ export default <SkeletikParser>skeletik({
 		'$id_or_class': (lex:Lexer, parent:Bone):[Bone,string] => {
 			if (lex.peek(+1) === PIPE_CODE) {
 				// HTML fragment
-				lex.idx += 2;
+				lex.skipNext(2);
 				parseXML(lex).forEach(bone => {
 					parent.add(bone);
 				});

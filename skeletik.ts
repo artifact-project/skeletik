@@ -63,6 +63,7 @@ export class Lexer {
 	public code:number = null;
 	public prevCode:number = null;
 	public length:number;
+	public skip:number;
 
     constructor(public input:string) {
 	    this.length = input.length;        
@@ -112,6 +113,10 @@ export class Lexer {
 
         throw error;
     }
+
+	skipNext(length:number) {
+		this.skip = length;
+	}
 }
 
 
@@ -258,6 +263,7 @@ class Skeletik {
 			var length = lex.length;
 			var exit = false;
 			var setLastIdx; // todo: rename to `cursorMode`
+			var lastEnterIdx;
 
 			this.vars();
 
@@ -319,7 +325,7 @@ class Skeletik {
 					exit = true;
 				}
 
-				if (calcIndent) {
+				if (calcIndent && code !== 10) {
 					if (code === 9 || code === 32) {
 						lex.indent[code === 9 ? 'tab' : 'space']++;
 					} else {
@@ -332,13 +338,19 @@ class Skeletik {
 					}
 				}
 
-				this.loop(state, code);
+				if (lex.skip > 0) {
+					lex.skip--;
+					lex.lastIdx = lex.idx + 1;
+				} else {
+					this.loop(state, code);
+				}
 
 				if (exit) {
 					break;
 				}
 
-				if (code === 10 && (length - lex.idx) !== 1) {
+				if (code === 10 && (length - lex.idx) !== 1 && lex.idx !== lastEnterIdx) {
+					lastEnterIdx = lex.idx;
 					emit("line");
 					lex.line++;
 					lex.column = 0;

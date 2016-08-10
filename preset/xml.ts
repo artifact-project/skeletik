@@ -23,7 +23,6 @@ function setBooleanAttr(lex:Lexer, bone:Bone):void {
 }
 
 function addText(parent:Bone, token) {
-
 	if (_textChain.length) {
 		token && _textChain.push(token);
 		add(parent, utils.TEXT_TYPE, {value: _textChain});
