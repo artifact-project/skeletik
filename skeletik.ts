@@ -26,7 +26,7 @@ export interface SkeletikOptions {
 
 export interface SkeletikParser {
 	(input:string):Bone;
-	capture:(lex:Lexer, options?:SkeletikOptions) => Bone;
+	capture:(lex:Lexer, options?:SkeletikOptions, root?:Bone) => Bone;
 }
 
 export interface LexerIndent {
@@ -454,10 +454,10 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 		return bone;
 	};
 
-	parse.capture = function (lex:Lexer, localOptions?:SkeletikOptions):Bone {
+	parse.capture = function (lex:Lexer, localOptions?:SkeletikOptions, root?:Bone):Bone {
 		localOptions = localOptions || {};
 
-		var root = new Bone('#root');
+		root = root || new Bone('#root');
 
 		for (var key in options) {
 			if (localOptions[key]) {

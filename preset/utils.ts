@@ -48,7 +48,7 @@ export function addComment(parent:Bone, value:string):void {
 }
 
 export function addTag(parent:Bone, name, tokens?:any[]):Bone {
-	if (tokens.length) {
+	if (tokens && tokens.length) {
 		name && tokens.push(name);
 		name = tokens.slice(0);
 		tokens.length = 0;
@@ -69,12 +69,12 @@ export function fail(lex:Lexer, bone:Bone):void {
 	lex.error(`Invalid character \`${lex.getChar()}\`, state: ${lex.state}`, bone);
 }
 
-export function parseXML(lex:Lexer):Bone[] {
-	return xmlParser.capture(lex, {
+export function parseXML(lex:Lexer, root:Bone) {
+	xmlParser.capture(lex, {
 		onpeek(lex, bone) {
 			return !(bone.type === ROOT_TYPE && (lex.prevCode === PIPE_CODE && lex.code === HASHTAG_CODE));
 		}
-	}).nodes;
+	}, root);
 }
 
 export function parseJS(lex:Lexer, stopper:number, initialOffset:number = 0) {

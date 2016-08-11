@@ -205,9 +205,7 @@ export default <SkeletikParser>skeletik({
 			if (lex.peek(+1) === PIPE_CODE) {
 				// HTML fragment
 				lex.skipNext(2);
-				parseXML(lex).forEach(bone => {
-					parent.add(bone);
-				});
+				parseXML(lex, parent);
 			} else {
 				shortAttrType = lex.code;
 				return [addTag(parent, 'div'), ID_OR_CLASS_STATE];
@@ -262,14 +260,8 @@ export default <SkeletikParser>skeletik({
 
 			if (KEYWORDS[token]) {
 				return [addKeyword(parent, token), keywords.start(token)];
-			} else if (state.add !== false) {
-				if (tagNameChain.length) {
-					token && tagNameChain.push(token);
-					parent = addTag(parent, tagNameChain);
-					tagNameChain = [];
-				} else if (token) {
-					parent = addTag(parent, token);
-				}
+			} else if (state.add !== false && (token || tagNameChain.length)) {
+				parent = addTag(parent, token, tagNameChain);
 			}
 
 			return [state.close ? closeEntry(parent) : parent, state.to || ''];

@@ -26,11 +26,11 @@ define(['qunit'], function (QUnit) {
 		}
 	}
 
-	function xtplEqual(actual, expected, message) {
+	function fragEqual(actual, expected, message) {
 		QUnit.assert.deepEqual(normalize(actual), expected, message);
 	}
 
 	// Export
-	QUnit.assert.xtplEqual = xtplEqual;
-	return xtplEqual;
+	QUnit.assert.fragEqual = fragEqual;
+	return fragEqual;
 })

@@ -1,4 +1,4 @@
-define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
+define(['qunit', 'skeletik/preset/xml', './qunit.assert.fragEqual'], function (QUnit, xmlParser) {
 	'use strict';
 
 	QUnit.module('skeletik:xml');
@@ -71,11 +71,29 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 			assert.equal(frag.length, 1);
 			assert.equal(frag.first.length, 0);
 			assert.equal(frag.first.type, 'tag');
-			assert.deepEqual(frag.first.raw, {
+			assert.fragEqual(frag.first.raw, {
 				name: 'img',
 				attrs: {src: 'foo.gif'}
 			});
 		});
+	});
+
+	QUnit.test('<img="${src}"/>', function (assert) {
+		function testMe(src, parsedSrc) {
+			var frag = xmlParser('<img src="' + src + '"/>');
+
+			assert.equal(frag.length, 1, src);
+			assert.equal(frag.first.length, 0);
+			assert.equal(frag.first.type, 'tag');
+			assert.deepEqual(frag.first.raw, {
+				name: 'img',
+				attrs: {src: [parsedSrc]}
+			});
+		}
+
+		testMe('${url}', [{type: 'expression', raw: 'url'}]);
+		testMe('http://${url}', ['http://', {type: 'expression', raw: 'url'}]);
+		testMe('  foo bar  ', ['  foo bar  ']);
 	});
 
 	// <img src align/>
@@ -84,7 +102,7 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 		assert.equal(frag.length, 1);
 		assert.equal(frag.first.length, 0);
 		assert.equal(frag.first.type, 'tag');
-		assert.deepEqual(frag.first.raw, {
+		assert.fragEqual(frag.first.raw, {
 			name: 'img',
 			attrs: {src: 'foo.gif', align: 'bottom'}
 		});
@@ -94,12 +112,13 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 	['<input type="checkbox" checked/>!', '<input checked type="checkbox"/>!'].forEach(function (html) {
 		QUnit.test(html, function (assert) {
 			var frag = xmlParser(html);
+
 			assert.equal(frag.length, 2);
 			assert.equal(frag.first.length, 0);
 			assert.equal(frag.first.type, 'tag');
-			assert.deepEqual(frag.first.raw, {
+			assert.fragEqual(frag.first.raw, {
 				name: 'input',
-				attrs: {type: 'checkbox', checked: true}
+				attrs: {type: 'checkbox', checked: 'true'}
 			});
 			assert.deepEqual(frag.last.raw, {value: '!'});
 		});
@@ -107,6 +126,7 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 
 	QUnit.test('<b></b>', function (assert) {
 		var frag = xmlParser('<b></b>');
+
 		assert.equal(frag.length, 1);
 		assert.equal(frag.first.length, 0);
 		assert.equal(frag.first.type, 'tag');
@@ -114,6 +134,27 @@ define(['qunit', 'skeletik/preset/xml'], function (QUnit, xmlParser) {
 			name: 'b',
 			attrs: {}
 		});
+	});
+
+	QUnit.test('<b class="..."/>', function (assert) {
+		function testMe(classes, parsedClasses) {
+			var frag = xmlParser('<b class="' + classes + '"/>');
+			
+			assert.equal(frag.length, 1, classes);
+			assert.equal(frag.first.length, 0);
+			assert.equal(frag.first.type, 'tag');
+			assert.deepEqual(frag.first.raw, {
+				name: 'b',
+				attrs: {
+					class: parsedClasses
+				}
+			});
+		}
+
+		testMe('foo', [['foo']]);
+		testMe('foo bar', [['foo'], ['bar']]);
+		testMe('${foo} b${a}r', [[{type: 'expression', raw: 'foo'}], ['b', {type: 'expression', raw: 'a'}, 'r']]);
+		testMe('  ${foo}   b${a}r  ', [[{type: 'expression', raw: 'foo'}], ['b', {type: 'expression', raw: 'a'}, 'r']]);
 	});
 
 	QUnit.test('<b>foo</b>', function (assert) {

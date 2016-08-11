@@ -19,7 +19,22 @@ const fail = utils.fail;
 const expressionMixin = utils.expressionMixin;
 
 function setBooleanAttr(lex:Lexer, bone:Bone):void {
-	bone.raw.attrs[lex.takeToken()] = true;
+	addAttrValue(bone, lex.takeToken(), [true]);
+}
+
+function addAttrValue(bone:Bone, name:string, valueChain:any[], token?:string) {
+	let list = bone.raw.attrs[name];
+	
+	if (list === void 0) {
+		list = bone.raw.attrs[name] = [];
+	}
+
+	token && valueChain.push(token);
+	
+	if (valueChain.length) {
+		list.push(valueChain.slice(0));
+		valueChain.length = 0;
+	}
 }
 
 function addText(parent:Bone, token) {
@@ -179,16 +194,25 @@ export default <SkeletikParser>skeletik({
 		'': fail
 	},
 
-	'tag:attr:value:read': {
+	'tag:attr:value:read': expressionMixin(() => tokensChain, {
 		'\\': () => {
 			slashes++;
 			return '->';
 		},
 
+		' ': (lex, bone) => {
+			if (attrName === 'class') {
+				addAttrValue(bone, attrName, tokensChain, lex.takeToken().trim());
+				return '-->';
+			} else {
+				return '->'
+			}
+		},
+
 		'"': (lex:Lexer, bone:Bone) => {
 			if (lex.code === QUOTE_CODE) { // chr: "
 				if (!(slashes % 2)) {
-					bone.raw.attrs[attrName] = lex.takeToken();
+					addAttrValue(bone, attrName, tokensChain, lex.takeToken())
 					return 'tag:attrs';
 				}
 			}
@@ -201,7 +225,7 @@ export default <SkeletikParser>skeletik({
 			slashes = 0;
 			return '->';
 		}
-	}
+	})
 }, {
 	onend: (lex:Lexer, bone:Bone) => {
 		if (lex.lastIdx < lex.length) {
