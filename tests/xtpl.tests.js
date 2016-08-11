@@ -4,29 +4,8 @@ define(['qunit', 'skeletik/preset/xtpl', './qunit.assert.fragEqual'], function (
 	'use strict';
 
 	QUnit.module('skeletik:xtpl');
+
 	QUnit.dump.maxDepth = 10;
-
-	// Define keywords
-	var keywords = xtplParser.keywords;
-	
-	keywords.add('if', ' ( @test:js )');
-
-	keywords.add('else', ' if ( @test:js )', {
-		optional: true,
-		validate: function (lex, bone) {
-			var raw = bone.prev ? bone.prev.raw : {};
-
-			if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
-				lex.error('Unexpected token else', bone);
-			}
-		}
-	});
-
-	keywords.add('for', [
-		' ( @as:var in @data:js )',
-		' ( [ @key:var , @as:var ] in @data:js )'
-	]);
-
 	xtplParser = xtplParser['default'];
 
 	QUnit.test('empty', function (assert) {

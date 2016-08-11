@@ -762,5 +762,24 @@ export const keywords = (function () {
 				}
 			};
 		}
-	}
+	};
 })();
+
+// Define base keywords
+keywords.add('if', ' ( @test:js )');
+
+keywords.add('else', ' if ( @test:js )', {
+	optional: true,
+	validate: function (lex, bone) {
+		var raw = bone.prev ? bone.prev.raw : {};
+
+		if (!(raw.name === 'if' || raw.name === 'else' && raw.attrs.test)) {
+			lex.error('Unexpected token else', bone);
+		}
+	}
+});
+
+keywords.add('for', [
+	' ( @as:var in @data:js )',
+	' ( [ @key:var , @as:var ] in @data:js )'
+]);
