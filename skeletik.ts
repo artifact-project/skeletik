@@ -1,3 +1,15 @@
+export interface IBone {
+	type:string;
+	raw?:any;
+	length:number;
+	nodes:IBone[];
+	parent:Bone;
+	first:Bone;
+	last:Bone;
+	prev:Bone;
+	next:Bone;
+}
+
 export interface SkeletikRanges {
 	[index:string]:string[];
 }
@@ -30,18 +42,18 @@ export interface SkeletikParser {
 }
 
 export interface LexerIndent {
-    tab:number;
-    space:number;
+	tab:number;
+	space:number;
 }
 
 export class LexerSyntaxError extends SyntaxError {
-    public bone:Bone;
-    public chr:string;
-    public token:string;
-    public line:number;
-    public column:number;
-    public details:string;
-    public pretty:string;
+	public bone:Bone;
+	public chr:string;
+	public token:string;
+	public line:number;
+	public column:number;
+	public details:string;
+	public pretty:string;
 
 	constructor(public message:string) {
 		super(message);
@@ -50,12 +62,12 @@ export class LexerSyntaxError extends SyntaxError {
 
 /**
  * @class Lexer
- * @param input 
+ * @param input
  */
 export class Lexer {
 	public state:string = '';
 	public prevState:string = '';
-    public line:number = 1;
+	public line:number = 1;
 	public column:number = 1;
 	public idx:number = 0;
 	public lastIdx:number = 0;
@@ -65,54 +77,54 @@ export class Lexer {
 	public length:number;
 	public skip:number;
 
-    constructor(public input:string) {
-	    this.length = input.length;        
-    }
+	constructor(public input:string) {
+		this.length = input.length;
+	}
 
-    getToken(leftOffset?:number, rightOffset?:number):string {
-        return this.input.substring(this.lastIdx + (leftOffset|0), this.idx + (rightOffset|0));
-    }
+	getToken(leftOffset?:number, rightOffset?:number):string {
+		return this.input.substring(this.lastIdx + (leftOffset | 0), this.idx + (rightOffset | 0));
+	}
 
-    save():this {
-        this.lastIdx = this.idx + 1;
-        return this;
-    }
+	save():this {
+		this.lastIdx = this.idx + 1;
+		return this;
+	}
 
-    takeToken(leftOffset?:number, rightOffset?:number):string {
-        const token:string = this.getToken(leftOffset, rightOffset);
-        this.lastIdx = this.idx;
-        return token;
-    }
+	takeToken(leftOffset?:number, rightOffset?:number):string {
+		const token:string = this.getToken(leftOffset, rightOffset);
+		this.lastIdx = this.idx;
+		return token;
+	}
 
-    getChar():string {
-        return String.fromCharCode(this.code); // todo: vs. charAt()
-    }
+	getChar():string {
+		return String.fromCharCode(this.code); // todo: vs. charAt()
+	}
 
-    takeChar():string {
-        this.lastIdx = this.idx;
-        return this.getChar(); 
-    }
+	takeChar():string {
+		this.lastIdx = this.idx;
+		return this.getChar();
+	}
 
-    peek(offset):number {
-        return offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset);
-    }
+	peek(offset):number {
+		return offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset);
+	}
 
-    error(message:string, bone?:Bone, columnOffset?:number):LexerSyntaxError {
-        const error = new LexerSyntaxError(message);
+	error(message:string, bone?:Bone, columnOffset?:number):LexerSyntaxError {
+		const error = new LexerSyntaxError(message);
 
-        error.bone = bone;
-        error.chr = this.getChar();
-        error.token = this.getToken();
-        error.line = this.line;
-        error.column = this.column + (columnOffset|0);
-        error.details = this.input.split('\n')[error.line - 1].substr(0, error.column);
-        error.pretty = [
-            error.details.replace(/\t/g, ' '),
-            new Array(error.column).join('-') + '^'
-        ].join('\n');
+		error.bone = bone;
+		error.chr = this.getChar();
+		error.token = this.getToken();
+		error.line = this.line;
+		error.column = this.column + (columnOffset | 0);
+		error.details = this.input.split('\n')[error.line - 1].substr(0, error.column);
+		error.pretty = [
+			error.details.replace(/\t/g, ' '),
+			new Array(error.column).join('-') + '^'
+		].join('\n');
 
-        throw error;
-    }
+		throw error;
+	}
 
 	skipNext(length:number) {
 		this.skip = length;
@@ -125,47 +137,48 @@ export class Lexer {
  * @param type
  * @param [raw]
  */
-export class Bone {
-    public length:number = 0;
-    public nodes:Bone[] = [];
-    
-    public parent:Bone;
-    
-    public first:Bone;
-    public last:Bone;
+export class Bone implements IBone {
+	public length:number = 0;
+	public nodes:Bone[] = [];
 
-    public prev:Bone;
-    public next:Bone;
+	public parent:Bone;
 
-    constructor(public type:string, public raw?:any) {}
+	public first:Bone;
+	public last:Bone;
+
+	public prev:Bone;
+	public next:Bone;
+
+	constructor(public type:string, public raw?:any) {
+	}
 
 	add(bone:Bone):this;
-    add(type:string, raw?:any):this;
+	add(type:string, raw?:any):this;
 	add(type?, raw?) {
-        const bone = typeof type === 'string' ? new Bone(type, raw) : type;
+		const bone = typeof type === 'string' ? new Bone(type, raw) : type;
 
-        bone.parent = this;
+		bone.parent = this;
 
-        if (this.length > 0) {
-            bone.prev = this.last;
-            this.last.next = bone;
-        }
+		if (this.length > 0) {
+			bone.prev = this.last;
+			this.last.next = bone;
+		}
 
-        this.length = this.nodes.push(bone);
-        this.first = this.nodes[0];
-        this.last = this.nodes[this.length - 1];
+		this.length = this.nodes.push(bone);
+		this.first = this.nodes[0];
+		this.last = this.nodes[this.length - 1];
 
-        return this;
-    }
+		return this;
+	}
 
-    toJSON() {
-        return {
-            type: this.type,
-            raw: this.raw,
-            nodes: this.nodes
-        };
-    }
-};
+	toJSON() {
+		return {
+			type: this.type,
+			raw: this.raw,
+			nodes: this.nodes
+		};
+	}
+}
 
 
 /**
@@ -199,12 +212,12 @@ class Skeletik {
 			}
 
 			ranges[name] = new Function('code', 'return (' + ranges[name].map((range) => {
-				if (range.length == 3) {
-					return range.charCodeAt(0) + ' <= code && ' + range.charCodeAt(2) + ' >= code';
-				} else {
-					return range.charCodeAt(0) + ' === code';
-				}
-			}).join(') || (') + ')');
+					if (range.length == 3) {
+						return range.charCodeAt(0) + ' <= code && ' + range.charCodeAt(2) + ' >= code';
+					} else {
+						return range.charCodeAt(0) + ' === code';
+					}
+				}).join(') || (') + ')');
 		});
 
 		this._ranges = ranges;
@@ -244,7 +257,7 @@ class Skeletik {
 						chr: chr,
 						code: chr.charCodeAt(0),
 						next: next,
-						setLastIdx: setLastIdx, 
+						setLastIdx: setLastIdx,
 					};
 				})
 			});
@@ -371,7 +384,7 @@ class Skeletik {
 						lex.lastIdx = lex.idx + 1;
 					}
 				}
-				
+
 				if (setLastIdx !== '>') {
 					lex.idx++;
 					lex.column++;
@@ -384,47 +397,47 @@ class Skeletik {
 				return spaces + 'var ' + _this._vars.join(';\n' + spaces + 'var ');
 			} else if (name === 'loop') {
 				return spaces + _this._states.map((state) => {
-					var code = [];
-					var rules = state.rules;
-
-					code.push('\t' + rules.map((rule) => {
 						var code = [];
-						var next = rule.next;
-						var chr = JSON.stringify(rule.chr);
+						var rules = state.rules;
 
-						if (_this._ranges[rule.chr]) {
-							code.push('if (ranges.' + rule.chr + '(code)) { // char: ' + chr);
-						} else {
-							code.push(rule.chr !== '' ? 'if (' + rule.code + ' === code) { // char: ' + chr : '{ // char: any');
+						code.push('\t' + rules.map((rule) => {
+								var code = [];
+								var next = rule.next;
+								var chr = JSON.stringify(rule.chr);
+
+								if (_this._ranges[rule.chr]) {
+									code.push('if (ranges.' + rule.chr + '(code)) { // char: ' + chr);
+								} else {
+									code.push(rule.chr !== '' ? 'if (' + rule.code + ' === code) { // char: ' + chr : '{ // char: any');
+								}
+
+								if (next === '->' || next === '-->') {
+									code.push('\tstate = _state;');
+									(state === '-->') && code.push('\tsetLastIdx = true;');
+								} else {
+									if (rule.setLastIdx) {
+										code.push('\tsetLastIdx = ' + JSON.stringify(rule.setLastIdx) + ';');
+									}
+
+									if (typeof next === 'function') {
+										code.push('\tdoIt(' + chr + ');');
+									} else {
+										code.push('\tstate = ' + _this._states[next] + ';');
+									}
+								}
+
+								code.push('}');
+
+								return code.join('\n' + spaces + '\t');
+							}).join(' else '));
+
+						if (state.events) {
+							code.unshift('if (emit("char") !== false) {');
+							code.push('}');
 						}
 
-						if (next === '->' || next === '-->') {
-							code.push('\tstate = _state;');
-							(state === '-->') && code.push('\tsetLastIdx = true;');
-						} else {
-							if (rule.setLastIdx) {
-								code.push('\tsetLastIdx = ' + JSON.stringify(rule.setLastIdx) + ';');
-							}
-
-							if (typeof next === 'function') {
-								code.push('\tdoIt(' + chr + ');');
-							} else {
-								code.push('\tstate = ' + _this._states[next] + ';');
-							}
-						}
-
-						code.push('}');
-
-						return code.join('\n' + spaces + '\t');
-					}).join(' else '));
-
-					if (state.events){
-						code.unshift('if (emit("char") !== false) {');
-						code.push('}');
-					}
-
-					return [].concat('if (' + state.name + ' === ' + vState + ') {', code, '}').join('\n' + spaces);
-				}).join(' else ');
+						return [].concat('if (' + state.name + ' === ' + vState + ') {', code, '}').join('\n' + spaces);
+					}).join(' else ');
 			}
 
 			return '';
@@ -432,13 +445,14 @@ class Skeletik {
 
 		return new Function('ranges, spec, events', 'return ' + code)(this._ranges, this._spec, this._events);
 	}
-};
+}
+;
 
 function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:SkeletikOptions):SkeletikParser {
 	options = options || {};
 
 	const parser = new Skeletik(ranges, spec);
-	const parse = <SkeletikParser>function (input:string): Bone {
+	const parse = <SkeletikParser>function (input:string):Bone {
 		const lex = new Lexer(input + '\n');
 		const root = new Bone('#root');
 
@@ -474,7 +488,7 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 		}
 
 		localOptions.onstart && localOptions.onstart(lex, root);
-		
+
 		var bone = parser.exec(lex, root, localOptions);
 		localOptions.onend && localOptions.onend(lex, bone);
 
@@ -487,6 +501,6 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 // Export
 skeletikFactory['Bone'] = Bone;
 skeletikFactory['preset'] = {};
-skeletikFactory['version'] = '0.2.0';
+skeletikFactory['version'] = '0.4.0';
 
 export default skeletikFactory;
