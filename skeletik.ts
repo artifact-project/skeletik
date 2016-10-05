@@ -1,13 +1,15 @@
+export type BoneConstructor = {new(name, raw): IBone};
+
 export interface IBone {
 	type:string;
-	raw?:any;
+	raw:any;
 	length:number;
 	nodes:IBone[];
-	parent:Bone;
-	first:Bone;
-	last:Bone;
-	prev:Bone;
-	next:Bone;
+	parent:IBone;
+	first:IBone;
+	last:IBone;
+	prev:IBone;
+	next:IBone;
 }
 
 export interface SkeletikRanges {
@@ -149,7 +151,7 @@ export class Bone implements IBone {
 	public prev:Bone;
 	public next:Bone;
 
-	constructor(public type:string, public raw?:any) {
+	constructor(public type:string, public raw:any = null) {
 	}
 
 	add(bone:Bone):this;
@@ -501,6 +503,6 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 // Export
 skeletikFactory['Bone'] = Bone;
 skeletikFactory['preset'] = {};
-skeletikFactory['version'] = '0.4.0';
+skeletikFactory['version'] = '0.5.0';
 
 export default skeletikFactory;
