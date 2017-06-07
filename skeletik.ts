@@ -448,7 +448,7 @@ class Skeletik {
 		return new Function('ranges, spec, events', 'return ' + code)(this._ranges, this._spec, this._events);
 	}
 }
-;
+
 
 function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:SkeletikOptions):SkeletikParser {
 	options = options || {};
