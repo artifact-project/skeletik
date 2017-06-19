@@ -21,7 +21,7 @@ export interface SkeletikStates {
 }
 
 export type SkeletikStateHandle = (lex:Lexer, bone:Bone) => void|string|Bone|[Bone,string]
-export type SkeletikListener = (lex:Lexer, bone:Bone) => void|boolean|Bone
+export type SkeletikListener = (lex:Lexer, bone:Bone, rootBone?: Bone) => void|boolean|Bone
 
 export interface SkeletikState {
 	[index:string]:string | SkeletikStateHandle | SkeletikStateEvents;
@@ -458,10 +458,10 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 		const lex = new Lexer(input + '\n');
 		const root = new Bone('#root');
 
-		options.onstart && options.onstart(lex, root);
+		options.onstart && options.onstart(lex, root, root);
 
 		let bone = parser.exec(lex, root, options);
-		const retEnd = options.onend && options.onend(lex, bone);
+		const retEnd = options.onend && options.onend(lex, bone, root);
 
 		if (retEnd && retEnd['type']) {
 			bone = retEnd as Bone;
@@ -489,10 +489,10 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 			}
 		}
 
-		localOptions.onstart && localOptions.onstart(lex, root);
+		localOptions.onstart && localOptions.onstart(lex, root, root);
 
 		var bone = parser.exec(lex, root, localOptions);
-		localOptions.onend && localOptions.onend(lex, bone);
+		localOptions.onend && localOptions.onend(lex, bone, root);
 
 		return bone;
 	};

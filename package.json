@@ -1,12 +1,13 @@
 {
   "name": "skeletik",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Tiny lexical analyzer",
   "author": "RubaXa <ibnRubaXa@gmail.com>",
   "license": "MIT",
   "main": "index.ts",
   "files": [
     "README.md",
+    "tsconfig.json",
     "skeletik.ts"
   ],
   "scripts": {

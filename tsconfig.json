@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
-    "module": "umd",
+    "module": "commonjs",
     "outDir": "dist/",
     "target": "es3",
+    "declaration": false,
     "experimentalDecorators": true
   },
   "exclude": ["dist", "node_modules"]
