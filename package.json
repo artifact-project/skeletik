@@ -10,6 +10,7 @@
   "license": "MIT",
   "main": "index.js",
   "scripts": {
+    "test": "echo \"SKIPPED\"",
     "watch": "tsc --watch",
     "ts-build": "tsc",
     "ts-clean": "git clean -f",
@@ -18,10 +19,10 @@
     "postpublish": "npm run ts-clean"
   },
   "files": [
-    "README.md",
-    "tsconfig.json",
-    "skeletik.js",
-    "skeletik.d.ts"
+    "*.js",
+    "*.d.ts",
+    "src/*/*.js",
+    "src/*/*.d.ts"
   ],
   "devDependencies": {
     "typescript": "^2.4.1"
