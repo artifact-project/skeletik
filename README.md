@@ -1,70 +1,47 @@
-skeletik
+Skeletik
 --------
 Tiny lexical analyzer
 
+```
+npm i --save-dev skeletik
+```
+
 # WARN: This is just a DRAFT!
 
-
-### Presets
- - [XML](#xml)
- - [XTPL](#xtpl)
-
-
-<a name="xml"></a>
-### XML preset
-
-```js
-const xmlParser = require('skeletik/preset/xml');
-console.log(xmlParser(`<div>
-	<h1 class="title">Hello world!</h1>
-	<div class="text">Bla-bla-bla...</div>
-</div>`));
-```
-
-<a name="xtpl"></a>
-### XTPL preset
-
-```js
-const xtplParser = require('skeletik/preset/xtpl');
-console.log(xtplParser(`div
-	h1.title | Hello world!
-	.text | Bla-bla-bla...
-`));
-```
 
 ### Usage
 
 ```js
 // Tokens
-var T_GROUP = 'group';
-var T_NUMBER = 'number';
-var T_BINARY = 'binary';
+const T_GROUP = 'group';
+const T_NUMBER = 'number';
+const T_BINARY = 'binary';
 
 // Priority of operations
-var PRIORITY = {
+const PRIORITY = {
 	'/': 1,
-	'*': 1
+	'*': 1,
 };
 
 // Бинарные опреации
-var BINARY = {
+const BINARY = {
 	'/': function (a, b) { return a / b },
 	'*': function (a, b) { return a * b },
 	'+': function (a, b) { return a + b },
-	'-': function (a, b) { return a - b }
+	'-': function (a, b) { return a - b },
 };
 
 // Create parser
-var ast = {};
-var parse = skeletik({
+const ast = {};
+const parse = skeletik({
 	'number': ['0-9'],
-	'binary': ['+', '-', '/', '*']
+	'binary': ['+', '-', '/', '*'],
 }, {
 	// Inited state
 	'': {
-		'number': function (lex, bone) {
-			var chr = lex.getChar();
-			var last = bone.last;
+		'number'(lex, bone) {
+			const chr = lex.getChar();
+			const last = bone.last;
 
 			if (last && (last.type === T_NUMBER || !last.prev || last.prev.type === T_BINARY)) {
 				last.type = T_NUMBER;
@@ -74,29 +51,24 @@ var parse = skeletik({
 			}
 		},
 
-		'binary': function (lex, bone) {
+		'binary'(lex, bone) {
 			bone.add(T_BINARY, lex.getChar());
 		},
 
-		'(': function (lex, bone) {
-			return bone.add(T_GROUP).last;
-		},
-
-		')': function (lex, bone) {
-			return bone.parent
-		}
-	}
+		'(': (lex, bone) => bone.add(T_GROUP).last,
+		')': (lex, bone) => bone.parent,
+	},
 });
 
-var calculator = function (expr) {
-	var root = parse(expr);
+function calculator(expr) {
+	const root = parse(expr);
 
 	return (function _calc(root) {
-		var stack = [];
-		var ops = [];
+		const stack = [];
+		const ops = [];
 
-		for (var i = 0; i < root.length; i++) {
-			var bone = root.nodes[i];
+		for (let i = 0; i < root.length; i++) {
+			const bone = root.nodes[i];
 
 			if (bone.type === T_BINARY) {
 				if (PRIORITY[bone.raw]) {
@@ -110,7 +82,8 @@ var calculator = function (expr) {
 			}
 		}
 
-		var results = stack.pop();
+		let results = stack.pop();
+
 		while (ops.length) {
 			results = BINARY[ops.pop()](results, stack.pop());
 		}
@@ -119,6 +92,6 @@ var calculator = function (expr) {
 	})(root);
 };
 
-var str = '(1 + 2) * 4 / -3 + 1';
+const str = '(1 + 2) * 4 / -3 + 1';
 console.log('results:', calculator(str), eval(str) === calculator(str));
 ```

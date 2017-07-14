@@ -1,29 +1,29 @@
 {
   "name": "skeletik",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Tiny lexical analyzer",
-  "author": "RubaXa <ibnRubaXa@gmail.com>",
-  "license": "MIT",
-  "main": "index.ts",
-  "files": [
-    "README.md",
-    "tsconfig.json",
-    "skeletik.ts"
-  ],
-  "scripts": {
-    "watch": "tsc --watch",
-    "push": "npm publish --registry=https://registry.npmjs.org/"
-  },
   "keywords": [
     "skeleton",
     "lexer"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/RubaXa/skeletik.git"
+  "author": "RubaXa <ibnRubaXa@gmail.com>",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "watch": "tsc --watch",
+    "ts-build": "tsc",
+    "ts-clean": "git clean -f",
+    "prepublish-only": "npm run test && npm run ts-build",
+    "prepublish": "[ -f index.js ] || npm run prepublish-only",
+    "postpublish": "npm run ts-clean"
   },
-  "bugs": {
-    "url": "https://github.com/RubaXa/skeletik/issues"
-  },
-  "homepage": "https://github.com/RubaXa/skeletik#readme"
+  "files": [
+    "README.md",
+    "tsconfig.json",
+    "skeletik.js",
+    "skeletik.d.ts"
+  ],
+  "devDependencies": {
+    "typescript": "^2.4.1"
+  }
 }
