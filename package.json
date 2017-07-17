@@ -10,13 +10,12 @@
   "license": "MIT",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"SKIPPED\"",
+    "test": "jest --coverage",
     "watch": "tsc --watch",
     "ts-build": "tsc",
-    "ts-clean": "git clean -f",
-    "prepublish-only": "npm run test && npm run ts-build",
-    "prepublish": "[ -f index.js ] || npm run prepublish-only",
-    "postpublish": "npm run ts-clean"
+    "git-clean": "git clean -f",
+    "prepublish": "npm run test && npm run ts-build",
+    "postpublish": "npm run git-clean"
   },
   "files": [
     "*.js",
@@ -25,6 +24,22 @@
     "src/*/*.d.ts"
   ],
   "devDependencies": {
-    "typescript": "^2.4.1"
+    "@types/jest": "^19.2.3",
+    "jest": "^20.0.3",
+    "ts-jest": "^20.0.4",
+    "typescript": "^2.4.0"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "\\.tests\\.ts$",
+    "setupTestFrameworkScriptFile": "<rootDir>/__jest__/extensions.ts",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json"
+    ]
   }
 }
