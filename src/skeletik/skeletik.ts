@@ -492,6 +492,10 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 	return parse;
 }
 
+export function charCode(chr: string): number {
+	return chr.charCodeAt(0);
+}
+
 // Export
 skeletikFactory['Bone'] = Bone;
 skeletikFactory['preset'] = {};

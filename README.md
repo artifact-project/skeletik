@@ -6,10 +6,35 @@ Tiny lexical analyzer
 npm i --save-dev skeletik
 ```
 
-# WARN: This is just a DRAFT!
+### API
+
+```ts
+const parse = skeletik({
+	// Ranges
+	//  key — name of range
+	//  value — array of symbols and intervals (ex 0-9 or a-b)
+	'$number': ['0-9'],
+	'$binary': ['+', '-', '/', '*'],
+}, {
+	// States
+	'': { // <- initial and also default state
+		// State Rules
+		//  key — one symbol or region name
+		//  value — handler or next name of a state
+		'$number': 'NUMBER',
+
+		// any
+		'': (lex, bone) => lex.error(`Invalid character \`${lex.getChar()}\`, state: ${lex.state}`, bone);
+	},
+
+	'NUMBER': {
+		// ...
+	}
+});
+```
 
 
-### Usage
+### Example
 
 ```js
 // Tokens
