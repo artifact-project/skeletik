@@ -46,6 +46,7 @@ const PARENTHESES = {
 };
 
 const C_GT = charCode('>');
+const C_HASH = charCode('#');
 const C_MINUS = charCode('-');
 
 let expr = '';
@@ -54,13 +55,14 @@ let openParentheses = 0;
 
 const mpop = skeletik({
 	'$ws': [' '],
+	'$name': ['A-Z', 'a-z', '_', '0-9'],
 	'$cmd': ['A-Z'],
 	'$start_expr': ['A-Z', 'a-z'],
 	'$expr': ['A-Z', 'a-z', '_', '0-9'],
 }, {
 	'': {
 		'<': 'AWAIT_COMMENT',
-		'#': 'AWAIT_SET_VARS',
+		'#': 'AWAIT_MPOP_EXPR',
 		'': '->',
 	},
 
@@ -68,8 +70,39 @@ const mpop = skeletik({
 		'': createSeq('!--', 'START_COMMENT'),
 	},
 
-	'AWAIT_SET_VARS': {
-		'': createSeq('#SetVars(', 'SET_VARS:NAME'),
+	'AWAIT_MPOP_EXPR': {
+		'#': 'AWAIT_FUNC_OR_VALUE',
+		'': '',
+	},
+
+	'AWAIT_FUNC_OR_VALUE': {
+		'$name': '->',
+		'(': (lex, bone) => {
+			const token = lex.getToken();
+
+			if (token === 'SetVars') {
+				return 'SET_VARS:NAME';
+			} else {
+				return [bone.add('FUNC', {
+					loc: getLoc(lex),
+					name: token,
+					args: [],
+				}).last, 'FUNC:ARGS'];
+			}
+		},
+		'#': (lex, bone) => {
+			if (lex.peek(+1) === C_HASH) {
+				bone.add('VALUE', {
+					loc: getLoc(lex),
+					name: lex.getToken(),
+				});
+				lex.skipNext(1);
+				return '';
+			}
+
+			return fail(lex, bone);
+		},
+		'': fail,
 	},
 
 	'START_COMMENT': {
@@ -113,7 +146,7 @@ const mpop = skeletik({
 
 	'SET_VARS:NAME': {
 		'=': (lex, bone) => {
-			return [bone.add('VAR', {
+			return [bone.add('SET_VARS', {
 				loc: getLoc(lex),
 				name: lex.getToken(),
 			}).last, 'SET_VARS:VALUE'];
@@ -124,6 +157,16 @@ const mpop = skeletik({
 	'SET_VARS:VALUE': {
 		')': (lex, bone) => {
 			bone.raw.value = lex.getToken();
+			lex.skipNext(2);
+			return bone.parent;
+		},
+		'': '->',
+	},
+
+	'FUNC:ARGS': {
+		')': (lex, bone) => {
+			bone.raw.args = [lex.getToken()];
+			lex.skipNext(2);
 			return bone.parent;
 		},
 		'': '->',
@@ -154,7 +197,7 @@ const mpop = skeletik({
 		'': (lex: Lexer, bone: Bone) => {
 			const {code} = lex;
 
-			if (PARENTHESES.hasOwnProperty(code)) {
+			if (PARENTHESES[code]) {
 				openParentheses += PARENTHESES[code];
 
 				if (openParentheses < 0) {
@@ -164,7 +207,7 @@ const mpop = skeletik({
 				return '->';
 			}
 
-			if (openParentheses > 0 || OPERANDS.hasOwnProperty(code)) {
+			if (openParentheses > 0 || OPERANDS[code]) {
 				return '->';
 			}
 
@@ -206,16 +249,20 @@ it('mpop', () => {
 		##SetVars(HOST=mail.ru)##
 		<!-- INCLUDE ./foo.html -->
 		<!-- IF TestServer && Eq(GET_x,1) -->
-			OK
+			Hi, ##UserName##
+			##JsonEncode(GET_id)##
 		<!-- /IF -->
 	`)))).toEqual({
 		type: '#root',
 		raw: null,
 		nodes: [
-			node('VAR', {name: 'TRUE', value: '1'}, [2, 17]),
-			node('VAR', {name: 'HOST', value: 'mail.ru'}, [3, 17]),
+			node('SET_VARS', {name: 'TRUE', value: '1'}, [2, 17]),
+			node('SET_VARS', {name: 'HOST', value: 'mail.ru'}, [3, 17]),
 			node('INCLUDE', {src: './foo.html'}, [4, 15]),
-			node('IF', {test: 'TestServer && Eq(GET_x,1)'}, {start: [5, 10], end: [7, 11]}),
+			node('IF', {test: 'TestServer && Eq(GET_x,1)'}, {start: [5, 10], end: [8, 11]}, [
+				node('VALUE', {name: 'UserName'}, [6, 18]),
+				node('FUNC', {name: 'JsonEncode', args: ['GET_id']}, [7, 16]),
+			]),
 		],
 	});
 });
