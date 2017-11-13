@@ -30,8 +30,10 @@ function getLoc(lex: Lexer) {
 	return {start: loc, end: loc}
 }
 
-const KEYWORDS = {
+const KEYWORDS: {
+	[name: string]: boolean} = {
 	'IF': true,
+	'ELSE': true,
 	'INCLUDE': true,
 };
 
@@ -118,22 +120,30 @@ const mpop = skeletik({
 	'AWAIT_CMD': {
 		'$cmd': '->', // continue
 		' '(lex: Lexer, bone: Bone) {
-			const token = lex.getToken();
+			const token = lex.getToken().replace(' ', '_');
 
 			if (KEYWORDS[token]) {
 				if (isClose) {
 					isClose = false;
 
+					if (token === 'IF') {
+						bone = bone.parent;
+					}
+
 					if (bone.type !== token) {
 						lex.error(`Wrong closed tag "${token}", but must be ${bone.type}`);
 					} else {
 						bone.raw.loc.end = [lex.line, lex.column];
-
 						return bone.parent;
 					}
 				}
 
-				const loc = [lex.line, lex.column];
+				if (token === 'ELSE' || token === 'ELSE_IF') {
+					bone = bone.parent;
+					bone.raw.alternate = new Bone(token);
+					bone.raw.alternate.parent = bone;
+					return [bone.raw.alternate, token === 'ELSE' ? '' : 'KW_IF'];
+				}
 
 				return [
 					bone.add(token, {loc: getLoc(lex)}).last,
@@ -180,6 +190,9 @@ const mpop = skeletik({
 	'KW_IF_EXPR': {
 		'': (_, bone: Bone) => {
 			bone.raw.test = expr;
+			bone.raw.consequent = new Bone('#block');
+			bone.raw.consequent.parent = bone;
+			return bone.raw.consequent;
 		},
 	},
 
@@ -235,10 +248,10 @@ it('mpop', () => {
 
 		return {
 			type,
-			raw: {
+			raw: raw ? {
 				loc,
 				...raw,
-			},
+			} : null,
 			nodes,
 		};
 	}
@@ -250,6 +263,7 @@ it('mpop', () => {
 		<!-- INCLUDE ./foo.html -->
 		<!-- IF TestServer && Eq(GET_x,1) -->
 			Hi, ##UserName##
+		<!-- ELSE -->
 			##JsonEncode(GET_id)##
 		<!-- /IF -->
 	`)))).toEqual({
@@ -259,10 +273,15 @@ it('mpop', () => {
 			node('SET_VARS', {name: 'TRUE', value: '1'}, [2, 17]),
 			node('SET_VARS', {name: 'HOST', value: 'mail.ru'}, [3, 17]),
 			node('INCLUDE', {src: './foo.html'}, [4, 15]),
-			node('IF', {test: 'TestServer && Eq(GET_x,1)'}, {start: [5, 10], end: [8, 11]}, [
-				node('VALUE', {name: 'UserName'}, [6, 18]),
-				node('FUNC', {name: 'JsonEncode', args: ['GET_id']}, [7, 16]),
-			]),
+			node('IF', {
+				test: 'TestServer && Eq(GET_x,1)',
+				consequent: node('#block', null, [], [
+					node('VALUE', {name: 'UserName'}, [6, 18]),
+				]),
+				alternate: node('ELSE', null, [], [
+					node('FUNC', {name: 'JsonEncode', args: ['GET_id']}, [8, 16]),
+				]),
+			}, {start: [5, 10], end: [9, 11]}),
 		],
 	});
 });
