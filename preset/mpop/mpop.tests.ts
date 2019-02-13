@@ -14,7 +14,7 @@ describe('mpop', () => {
 
 	const parse = (name: string) => {
 		// `JSON.stringify` + `JSON.parse needs` for converting bone to plain objects
-		const content = readFileSync(`${__dirname}/__fixture__/mpop.${name}.tpl`) + '';
+		const content = readFileSync(`${__dirname}/__fixture__/${name}.tpl`) + '';
 		return JSON.parse(JSON.stringify(mpop(content)));
 	};
 

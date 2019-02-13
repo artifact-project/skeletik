@@ -1,6 +1,6 @@
 {
   "name": "skeletik",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Tiny lexical analyzer",
   "keywords": [
     "skeleton",
@@ -22,7 +22,9 @@
     "*.js",
     "*.d.ts",
     "src/*/*.js",
-    "src/*/*.d.ts"
+    "src/*/*.d.ts",
+    "preset/*/*.js",
+    "preset/*/*.d.ts"
   ],
   "devDependencies": {
     "@types/jest": "^19.2.3",
