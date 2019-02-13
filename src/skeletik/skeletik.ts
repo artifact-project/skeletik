@@ -28,7 +28,8 @@ export interface SkeletikState {
 }
 
 export interface SkeletikStateEvents {
-	start:SkeletikStateHandle;
+	start?: SkeletikStateHandle;
+	leave?: SkeletikStateHandle;
 }
 
 export interface SkeletikOptions {
@@ -311,8 +312,8 @@ class Skeletik {
 				}
 			}
 
-			function emit(name) {
-				var fn = events[state];
+			function emit(name, s) {
+				var fn = events[s == null ? state : s];
 
 				if ((fn !== void 0) && (fn = fn[name]) !== void 0) {
 					var result = fn(lex, bone);
@@ -415,9 +416,11 @@ class Skeletik {
 				}
 
 				if (state !== _state) {
-					emit("start");
+					// console.log('new:', state, ', prev:', _state);
 					lex.prevState = _state;
 					_state = state;
+					emit("leave", lex.prevState);
+					emit("start");
 				}
 
 				if (setLastIdx && setLastIdx !== '>') {

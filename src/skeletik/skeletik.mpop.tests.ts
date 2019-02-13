@@ -1,10 +1,14 @@
 import skeletik, {charCode, Bone, Lexer} from './skeletik';
+import { readFileSync } from 'fs';
 
-function createSeq(seq, nextState) {
+type Pos = [number, number];
+type Loc = {start: Pos; end: Pos};
+
+function createSeq(seq: string, nextState: string, strict = false) {
 	let cursor = 0;
 	let length = seq.length;
 
-	return function (lex: Lexer) {
+	return (lex: Lexer) => {
 		if (lex.code === seq.charCodeAt(cursor)) {
 			cursor++;
 
@@ -17,7 +21,7 @@ function createSeq(seq, nextState) {
 		}
 
 		cursor = 0;
-		return '';
+		return strict ? '->' : '';
 	};
 }
 
@@ -25,15 +29,19 @@ function fail(lex: Lexer, bone: Bone) {
 	lex.error(`Invalid character \`${lex.getChar()}\`, state: ${lex.state}`, bone);
 }
 
+function getPos(lex: Lexer, offset = 0): Pos {
+	return [lex.line, lex.column + offset];
+}
+
 function getLoc(lex: Lexer) {
 	const loc = [lex.line, lex.column];
 	return {start: loc, end: loc}
 }
 
-const KEYWORDS: {
-	[name: string]: boolean} = {
+const KEYWORDS: {[name: string]: boolean} = {
 	'IF': true,
 	'ELSE': true,
+	'ELSEIF': true,
 	'INCLUDE': true,
 };
 
@@ -47,6 +55,7 @@ const PARENTHESES = {
 	[charCode(')')]: -1,
 };
 
+const C_LT = charCode('<');
 const C_GT = charCode('>');
 const C_HASH = charCode('#');
 const C_MINUS = charCode('-');
@@ -54,6 +63,7 @@ const C_MINUS = charCode('-');
 let expr = '';
 let isClose = false;
 let openParentheses = 0;
+let startPos: Pos;
 
 const mpop = skeletik({
 	'$ws': [' '],
@@ -63,6 +73,14 @@ const mpop = skeletik({
 	'$expr': ['A-Z', 'a-z', '_', '0-9'],
 }, {
 	'': {
+		__events: {
+			leave: (lex) => {
+				if (lex.code === C_LT || lex.code === C_HASH) {
+					startPos = getPos(lex);
+				}
+			},
+		},
+
 		'<': 'AWAIT_COMMENT',
 		'#': 'AWAIT_MPOP_EXPR',
 		'': '->',
@@ -95,7 +113,10 @@ const mpop = skeletik({
 		'#': (lex, bone) => {
 			if (lex.peek(+1) === C_HASH) {
 				bone.add('VALUE', {
-					loc: getLoc(lex),
+					loc: {
+						start: startPos,
+						end: getPos(lex, 2),
+					},
 					name: lex.getToken(),
 				});
 				lex.skipNext(1);
@@ -120,7 +141,7 @@ const mpop = skeletik({
 	'AWAIT_CMD': {
 		'$cmd': '->', // continue
 		' '(lex: Lexer, bone: Bone) {
-			const token = lex.getToken().replace(' ', '_');
+			const token = lex.getToken().replace(' ', '');
 
 			if (KEYWORDS[token]) {
 				if (isClose) {
@@ -133,12 +154,11 @@ const mpop = skeletik({
 					if (bone.type !== token) {
 						lex.error(`Wrong closed tag "${token}", but must be ${bone.type}`);
 					} else {
-						bone.raw.loc.end = [lex.line, lex.column];
-						return bone.parent;
+						return [bone, 'KW_AWAIT_END'];
 					}
 				}
 
-				if (token === 'ELSE' || token === 'ELSE_IF') {
+				if (token === 'ELSE' || token === 'ELSEIF') {
 					bone = bone.parent;
 					bone.raw.alternate = new Bone(token);
 					bone.raw.alternate.parent = bone;
@@ -146,7 +166,10 @@ const mpop = skeletik({
 				}
 
 				return [
-					bone.add(token, {loc: getLoc(lex)}).last,
+					bone.add(token, {loc: {
+						start: startPos,
+						end: null,
+					}}).last,
 					`KW_${token}`,
 				];
 			}
@@ -157,7 +180,7 @@ const mpop = skeletik({
 	'SET_VARS:NAME': {
 		'=': (lex, bone) => {
 			return [bone.add('SET_VARS', {
-				loc: getLoc(lex),
+				loc: {start: startPos, end: startPos},
 				name: lex.getToken(),
 			}).last, 'SET_VARS:VALUE'];
 		},
@@ -167,6 +190,7 @@ const mpop = skeletik({
 	'SET_VARS:VALUE': {
 		')': (lex, bone) => {
 			bone.raw.value = lex.getToken();
+			bone.raw.loc.end = getPos(lex, 3);
 			lex.skipNext(2);
 			return bone.parent;
 		},
@@ -192,16 +216,28 @@ const mpop = skeletik({
 			bone.raw.test = expr;
 			bone.raw.consequent = new Bone('#block');
 			bone.raw.consequent.parent = bone;
+			bone.raw.alternate = null
 			return bone.raw.consequent;
 		},
 	},
 
 	'KW_INCLUDE': {
-		' ': (lex, bone) => {
-			bone.raw.src = lex.getToken();
+		'': createSeq('-->', '>KW_INCLUDE_END', true),
+	},
+
+	'KW_INCLUDE_END': {
+		'>': (lex, bone) => {
+			bone.raw.src = lex.getToken(0, -2).trim();
+			bone.raw.loc.end = getPos(lex, 1);
 			return bone.parent;
 		},
-		'': '->',
+	},
+
+	'KW_AWAIT_END': {
+		'>': (lex, bone) => {
+			bone.raw.loc.end = getPos(lex, 1);
+			return bone.parent;
+		},
 	},
 
 	'EXPR': {
@@ -240,48 +276,80 @@ const mpop = skeletik({
 	}
 });
 
-it('mpop', () => {
-	function node(type, raw, loc, nodes = []) {
-		if (Array.isArray(loc)) {
-			loc = {start: loc, end: loc};
-		}
 
-		return {
-			type,
-			raw: raw ? {
-				loc,
-				...raw,
-			} : null,
-			nodes,
-		};
-	}
+describe('mpop', () => {
+	const node = (type: string, raw: object, loc: Loc, nodes = []) => ({
+		type,
+		raw: raw ? {
+			loc,
+			...raw,
+		} : null,
+		nodes,
+	});
 
-	// `JSON.stringify` + `JSON.parse needs` for converting bone to plain objects
-	expect(JSON.parse(JSON.stringify(mpop(`
-		##SetVars(TRUE=1)##
-		##SetVars(HOST=mail.ru)##
-		<!-- INCLUDE ./foo.html -->
-		<!-- IF TestServer && Eq(GET_x,1) -->
-			Hi, ##UserName##
-		<!-- ELSE -->
-			##JsonEncode(GET_id)##
-		<!-- /IF -->
-	`)))).toEqual({
-		type: '#root',
-		raw: null,
-		nodes: [
-			node('SET_VARS', {name: 'TRUE', value: '1'}, [2, 17]),
-			node('SET_VARS', {name: 'HOST', value: 'mail.ru'}, [3, 17]),
-			node('INCLUDE', {src: './foo.html'}, [4, 15]),
-			node('IF', {
-				test: 'TestServer && Eq(GET_x,1)',
-				consequent: node('#block', null, [], [
-					node('VALUE', {name: 'UserName'}, [6, 18]),
-				]),
-				alternate: node('ELSE', null, [], [
-					node('FUNC', {name: 'JsonEncode', args: ['GET_id']}, [8, 16]),
-				]),
-			}, {start: [5, 10], end: [9, 11]}),
-		],
+	const parse = (name: string) => {
+		// `JSON.stringify` + `JSON.parse needs` for converting bone to plain objects
+		const content = readFileSync(`${__dirname}/__fixture__/mpop.${name}.tpl`) + '';
+		return JSON.parse(JSON.stringify(mpop(content)));
+	};
+
+	it('SetVars', () => {
+		expect(parse('set-vars')).toEqual({
+			type: '#root',
+			raw: null,
+			nodes: [
+				node('SET_VARS', {name: 'TRUE', value: '1'}, {start: [1, 1], end: [1, 20]}),
+				node('SET_VARS', {name: 'HOST', value: 'mail.ru'}, {start: [2, 1], end: [2, 26]}),
+			],
+		});
+	});
+
+	it('SetVars with expression', () => {
+		expect(parse('set-vars.expr')).toEqual({
+			type: '#root',
+			raw: null,
+			nodes: [
+				node('SET_VARS', {name: 'VID', value: '##GET_VID##'}, {start: [1, 1], end: [1, 29]}),
+				node('SET_VARS', {name: 'FOO_JIGURDA', value: 'FMAIL-123-##VID##'}, {start: [2, 1], end: [2, 43]}),
+				node('SET_VARS', {name: 'BAR_JIGURDA', value: '##VID##-FMAIL-456'}, {start: [3, 1], end: [3, 43]}),
+				node('SET_VARS', {name: 'QUX_JIGURDA', value: 'feature-##IP##-##VID##-FMAIL-789'}, {start: [4, 1], end: [4, 58]}),
+			],
+		});
+	});
+
+	it('include', () => {
+		expect(parse('include')).toEqual({
+			type: '#root',
+			raw: null,
+			nodes: [
+				node('INCLUDE', {src: './foo.html'}, {start: [1, 1], end: [1, 28]}),
+			],
+		});
+	});
+
+	it('value', () => {
+		expect(parse('value')).toEqual({
+			type: '#root',
+			raw: null,
+			nodes: [
+				node('VALUE', {name: 'UserName'}, {start: [1, 5], end: [1, 17]}),
+			],
+		});
+	});
+
+	it('if', () => {
+		expect(parse('if')).toEqual({
+			type: '#root',
+			raw: null,
+			nodes: [
+				node('IF', {
+					test: 'true',
+					consequent: node('#block', null, {start: [1, 17], end: [3, 1]}, [
+						node('VALUE', {name: 'UserName'}, {start: [2, 6], end: [2, 18]}),
+					]),
+					alternate: null,
+				}, {start: [1, 1], end: [3, 13]}),
+			],
+		});
 	});
 });
