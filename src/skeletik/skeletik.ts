@@ -70,6 +70,7 @@ export class LexerSyntaxError extends SyntaxError {
 export class Lexer {
 	public state:string = '';
 	public prevState:string = '';
+	public nextState:string = '';
 	public line:number = 1;
 	public column:number = 1;
 	public idx:number = 0;
@@ -80,7 +81,7 @@ export class Lexer {
 	public length:number;
 	public skip:number;
 
-	constructor(public input:string) {
+	constructor(public input:string, public range?: any) {
 		this.length = input.length;
 	}
 
@@ -108,8 +109,12 @@ export class Lexer {
 		return this.getChar();
 	}
 
-	peek(offset):number {
+	peek(offset: number):number {
 		return offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset);
+	}
+
+	peekChar(offset: number): string {
+		return String.fromCharCode(offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset));
 	}
 
 	error(message:string, bone?:Bone, columnOffset?:number):LexerSyntaxError {
@@ -190,7 +195,7 @@ export class Bone implements IBone {
  * @param spec
  */
 class Skeletik {
-	private _ranges:any;
+	public _ranges:any;
 	private _spec:any;
 	private _states:any;
 	private _vars:any;
@@ -418,6 +423,7 @@ class Skeletik {
 				if (state !== _state) {
 					// console.log('new:', state, ', prev:', _state);
 					lex.prevState = _state;
+					lex.nextState = state;
 					_state = state;
 					emit("leave", lex.prevState);
 					emit("start");
@@ -450,7 +456,7 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 
 	const parser = new Skeletik(ranges, spec);
 	const parse = <SkeletikParser>function (input:string):Bone {
-		const lex = new Lexer(input + '\n');
+		const lex = new Lexer(input + '\n', parser._ranges);
 		const root = new Bone('#root');
 
 		options.onstart && options.onstart(lex, root, root);

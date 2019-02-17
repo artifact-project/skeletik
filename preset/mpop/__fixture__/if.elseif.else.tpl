@@ -1,6 +1,6 @@
 <!-- IF TestServer && Eq(GET_x,1) -->
-	Hi, ##UserName##
-<!-- ELSE IF !TestServer -->
+	Hi, ##UserName##?!
+<!-- ELSEIF !TestServer -->
 	##HOST##
 <!-- ELSE -->
 	##JsonEncode(GET_id)##

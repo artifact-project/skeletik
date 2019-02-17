@@ -1,80 +1,199 @@
 import { Loc, mpop } from './mpop';
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { Bone } from '../../src/skeletik/skeletik';
 
+export const parse = (name: string, path = __dirname) => {
+	const filename = `${path}/__fixture__/${name}.tpl`;
 
-describe('mpop', () => {
-	const node = (type: string, raw: object, loc: Loc, nodes = []) => ({
-		type,
-		raw: raw ? {
-			loc,
-			...raw,
-		} : null,
-		nodes,
-	});
+	// if (local && !existsSync(filename)) {
+	// 	return false;
+	// }
 
-	const parse = (name: string) => {
-		// `JSON.stringify` + `JSON.parse needs` for converting bone to plain objects
-		const content = readFileSync(`${__dirname}/__fixture__/${name}.tpl`) + '';
-		return JSON.parse(JSON.stringify(mpop(content)));
+	const raw = readFileSync(filename) + '';
+
+	// `JSON.stringify` + `JSON.parse needs` for converting bone to plain objects
+	return {
+		ast: JSON.parse(JSON.stringify(mpop(raw))),
+		raw,
+		filename,
 	};
+};
 
-	it('SetVars', () => {
-		expect(parse('set-vars')).toEqual({
-			type: '#root',
-			raw: null,
-			nodes: [
-				node('SET_VARS', {name: 'TRUE', value: '1'}, {start: [1, 1], end: [1, 20]}),
-				node('SET_VARS', {name: 'HOST', value: 'mail.ru'}, {start: [2, 1], end: [2, 26]}),
-			],
-		});
-	});
+export const stringify = (bone: Bone) => {
+	if (!bone) {
+		return '';
+	}
 
-	it('SetVars with expression', () => {
-		expect(parse('set-vars.expr')).toEqual({
-			type: '#root',
-			raw: null,
-			nodes: [
-				node('SET_VARS', {name: 'VID', value: '##GET_VID##'}, {start: [1, 1], end: [1, 29]}),
-				node('SET_VARS', {name: 'FOO_JIGURDA', value: 'FMAIL-123-##VID##'}, {start: [2, 1], end: [2, 43]}),
-				node('SET_VARS', {name: 'BAR_JIGURDA', value: '##VID##-FMAIL-456'}, {start: [3, 1], end: [3, 43]}),
-				node('SET_VARS', {name: 'QUX_JIGURDA', value: 'feature-##IP##-##VID##-FMAIL-789'}, {start: [4, 1], end: [4, 58]}),
-			],
-		});
-	});
+	const {
+		type,
+		raw,
+		nodes,
+	} = bone;
 
-	it('include', () => {
-		expect(parse('include')).toEqual({
-			type: '#root',
-			raw: null,
-			nodes: [
-				node('INCLUDE', {src: './foo.html'}, {start: [1, 1], end: [1, 28]}),
-			],
-		});
-	});
+	if (type === '#root') {
+		return nodes.map(stringify).join('');
+	} else if (type === '#text') {
+		return raw.value;
+	} else if (type === 'VALUE') {
+		return `##${raw.name}##`;
+	} else if (type === 'CALL') {
+		return `##${raw.name}(${raw.args.join(',')})##`;
+	} else if (type === 'SET') {
+		return `##SetVars(${raw.name}=${raw.value})##`;
+	} else if (type === 'INCLUDE' || type === 'CONTINUE' || type === 'BREAK') {
+		return `<!-- ${type}${raw.value ? ` ${raw.value}` : ''} -->`;
+	} else if (type === 'FOR') {
+		return `<!-- FOR ${raw.data} -->${nodes.map(stringify).join('')}<!-- /FOR -->`;
+	} else if (/^(ELSE|IF)/.test(type)) {
+		const {
+			ending,
+			consequent,
+			alternate,
+		} = raw;
 
-	it('value', () => {
-		expect(parse('value')).toEqual({
-			type: '#root',
-			raw: null,
-			nodes: [
-				node('VALUE', {name: 'UserName'}, {start: [1, 5], end: [1, 17]}),
-			],
-		});
-	});
+		return `<!-- ${type}${raw.test ? ` ${raw.test}` : ''} -->${
+			nodes.length ? nodes.map(stringify).join('') :
+			[
+				consequent ? consequent.nodes.map(stringify).join('') : '',
+				stringify(alternate),
+			].join('')
+		}${/^IF/.test(type) ? `<!-- /${type}${ending ? ` ${ending}` : ''} -->` : ''}`;
+	}
+};
 
-	it('if', () => {
-		expect(parse('if')).toEqual({
-			type: '#root',
-			raw: null,
-			nodes: [
-				node('IF', {
-					test: 'true',
-					consequent: node('#block', null, {start: [1, 17], end: [3, 1]}, [
-						node('VALUE', {name: 'UserName'}, {start: [2, 6], end: [2, 18]}),
-					]),
-					alternate: null,
-				}, {start: [1, 1], end: [3, 13]}),
-			],
-		});
-	});
+export const stringifyTypes = (bone: Bone) => {
+	if (!bone) {
+		return '';
+	}
+
+	const {
+		type,
+		raw,
+		nodes,
+	} = bone;
+
+	if (type === '#root') {
+		return nodes.map(stringifyTypes).join('');
+	} else if (type === '#text') {
+		return raw.value;
+	} else if (['VALUE', 'CALL', 'SET', 'INCLUDE', 'CONTINUE', 'BREAK'].includes(type)) {
+		return `[${type}]`;
+	} else if (['FOR'].includes(type)) {
+		return `[${type}]${nodes.map(stringifyTypes).join('')}[/${type}]`;
+	} else if (/^(ELSE|IF)/.test(type)) {
+		const {
+			consequent,
+			alternate,
+		} = raw;
+
+		return `[${type}]${
+			nodes.length ? nodes.map(stringifyTypes).join('') :
+			[
+				consequent ? consequent.nodes.map(stringifyTypes).join('') : '',
+				stringifyTypes(alternate),
+			].join('')
+		}${/^IF/.test(type) ? `[/${type}]` : ''}`;
+	}
+};
+
+it('text', () => {
+	const {ast} = parse('text');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('SetVars', () => {
+	const {ast} = parse('set-vars');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('SetVars with expression', () => {
+	const {ast} = parse('set-vars.expr');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('call', () => {
+	const {ast} = parse('call');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('include', () => {
+	const {ast} = parse('include');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('value', () => {
+	const {ast} = parse('value');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if', () => {
+	const {ast} = parse('if');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if-ending', () => {
+	const {ast} = parse('if.ending');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('ifdef', () => {
+	const {ast} = parse('if.def');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('ifnot', () => {
+	const {ast} = parse('if.not');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('ifnotdef', () => {
+	const {ast} = parse('if.not.def');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if-else', () => {
+	const {ast} = parse('if.else');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if-elseif-else', () => {
+	const {ast} = parse('if.elseif.else');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if-elseif-notdef-else', () => {
+	const {ast} = parse('if.elseif.notdef.else');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if-else-if-else', () => {
+	const {ast} = parse('if.else-if.else');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('if-else-if-notdef-else', () => {
+	const {ast} = parse('if.else-if.notdef.else');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
+});
+
+it('for', () => {
+	const {ast} = parse('for');
+	expect(stringify(ast)).toMatchSnapshot();
+	expect(stringifyTypes(ast)).toMatchSnapshot();
 });

@@ -1,0 +1,291 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SetVars 1`] = `
+"##SetVars(TRUE=1)##
+##SetVars(HOST=mail.ru)##
+"
+`;
+
+exports[`SetVars 2`] = `
+"[SET]
+[SET]
+"
+`;
+
+exports[`SetVars with expression 1`] = `
+"##SetVars(VID=##GET_VID##)##
+##SetVars(FOO_JIGURDA=FMAIL-123-##VID##)##
+##SetVars(BAR_JIGURDA=##VID##-FMAIL-456)##
+##SetVars(QUX_JIGURDA=feature-##IP##-##VID##-FMAIL-789)##
+"
+`;
+
+exports[`SetVars with expression 2`] = `
+"[SET]
+[SET]
+[SET]
+[SET]
+"
+`;
+
+exports[`call 1`] = `
+"##Reklama/ShowBanner(5588)##
+"
+`;
+
+exports[`call 2`] = `
+"[CALL]
+"
+`;
+
+exports[`for 1`] = `
+"##SetVars(ARR_Items=2)##
+##SetVars(ARR_1_a=1)##
+##SetVars(ARR_2_a=2)##
+
+<!-- FOR ARR -->
+	...
+	##.field1##
+	##.field2##
+	...
+	<!-- IF EXPR1 --><!-- CONTINUE --><!-- /IF -->
+	...
+	<!-- IF EXPR2 --><!-- BREAK --><!-- /IF -->
+	...
+<!-- /FOR -->
+"
+`;
+
+exports[`for 2`] = `
+"[SET]
+[SET]
+[SET]
+
+[FOR]
+	...
+	##.field1##
+	##.field2##
+	...
+	[IF][CONTINUE][/IF]
+	...
+	[IF][BREAK][/IF]
+	...
+[/FOR]
+"
+`;
+
+exports[`if 1`] = `
+"<!-- IF !true -->
+	Hi, ##UserName##
+<!-- /IF -->
+<!-- IF 0 -->Text<!-- /IF -->
+"
+`;
+
+exports[`if 2`] = `
+"[IF]
+	Hi, [VALUE]
+[/IF]
+[IF]Text[/IF]
+"
+`;
+
+exports[`if-else 1`] = `
+"<!-- IF TestServer && Eq(GET_x,1) -->
+	Hi, ##UserName##
+<!-- ELSE -->
+	##JsonEncode(GET_id)##
+<!-- /IF -->
+"
+`;
+
+exports[`if-else 2`] = `
+"[IF]
+	Hi, [VALUE]
+[ELSE]
+	[CALL]
+[/IF]
+"
+`;
+
+exports[`if-else-if-else 1`] = `
+"<!-- IF TestServer && Eq(GET_x,1) -->
+	Hi, ##UserName##!!
+<!-- ELSE IF !!TestServer -->
+	##HOST##
+<!-- ELSE -->
+	##JsonEncode(GET_id)##
+<!-- /IF -->
+"
+`;
+
+exports[`if-else-if-else 2`] = `
+"[IF]
+	Hi, [VALUE]!!
+[ELSE IF]
+	[VALUE]
+[ELSE]
+	[CALL]
+[/IF]
+"
+`;
+
+exports[`if-else-if-notdef-else 1`] = `
+"<!-- IF TestServer && Eq(GET_x,1) -->
+	Hi, ##UserName##!!
+<!-- ELSE IFNOT GET_id -->
+	IFNOT
+<!-- ELSE IFDEF GET_email -->
+	IFDEF
+<!-- ELSE IFNOTDEF TestServer -->
+	IFNOTDEF
+<!-- ELSE -->
+	##JsonEncode(GET_id)##
+<!-- /IF -->
+"
+`;
+
+exports[`if-else-if-notdef-else 2`] = `
+"[IF]
+	Hi, [VALUE]!!
+[ELSE IFNOT]
+	IFNOT
+[ELSE IFDEF]
+	IFDEF
+[ELSE IFNOTDEF]
+	IFNOTDEF
+[ELSE]
+	[CALL]
+[/IF]
+"
+`;
+
+exports[`if-elseif-else 1`] = `
+"<!-- IF TestServer && Eq(GET_x,1) -->
+	Hi, ##UserName##?!
+<!-- ELSEIF !TestServer -->
+	##HOST##
+<!-- ELSE -->
+	##JsonEncode(GET_id)##
+<!-- /IF -->
+"
+`;
+
+exports[`if-elseif-else 2`] = `
+"[IF]
+	Hi, [VALUE]?!
+[ELSEIF]
+	[VALUE]
+[ELSE]
+	[CALL]
+[/IF]
+"
+`;
+
+exports[`if-elseif-notdef-else 1`] = `
+"<!-- IF TestServer && Eq(GET_x,1) -->
+	Hi, ##UserName##?
+<!-- ELSEIFNOT TestServer -->
+	##HOST##
+<!-- ELSEIFDEF GET_id -->
+	##GET_id##
+<!-- ELSEIFNOTDEF GET_id -->
+	##EMAIL##
+<!-- ELSE -->
+	##JsonEncode(GET_id)##
+<!-- /IF -->
+"
+`;
+
+exports[`if-elseif-notdef-else 2`] = `
+"[IF]
+	Hi, [VALUE]?
+[ELSEIFNOT]
+	[VALUE]
+[ELSEIFDEF]
+	[VALUE]
+[ELSEIFNOTDEF]
+	[VALUE]
+[ELSE]
+	[CALL]
+[/IF]
+"
+`;
+
+exports[`if-ending 1`] = `
+"<!-- IF ActiveUser -->
+	Hi, ##GET_name##!
+<!-- /IF ActiveUser -->
+"
+`;
+
+exports[`if-ending 2`] = `
+"[IF]
+	Hi, [VALUE]!
+[/IF]
+"
+`;
+
+exports[`ifdef 1`] = `
+"<!-- IFDEF GET_name -->
+	Hi, ##GET_name##
+<!-- /IFDEF -->
+"
+`;
+
+exports[`ifdef 2`] = `
+"[IFDEF]
+	Hi, [VALUE]
+[/IFDEF]
+"
+`;
+
+exports[`ifnot 1`] = `
+"<!-- IFNOT GET_name -->Hi, ##GET_name##<!-- /IFNOT -->
+"
+`;
+
+exports[`ifnot 2`] = `
+"[IFNOT]Hi, [VALUE][/IFNOT]
+"
+`;
+
+exports[`ifnotdef 1`] = `
+"<!-- IFNOTDEF GET_name -->Hi, ##GET_name##<!-- /IFNOTDEF -->
+"
+`;
+
+exports[`ifnotdef 2`] = `
+"[IFNOTDEF]Hi, [VALUE][/IFNOTDEF]
+"
+`;
+
+exports[`include 1`] = `
+"<!-- INCLUDE ./foo.html -->
+"
+`;
+
+exports[`include 2`] = `
+"[INCLUDE]
+"
+`;
+
+exports[`text 1`] = `
+"Hi, #user-name#!
+"
+`;
+
+exports[`text 2`] = `
+"Hi, #user-name#!
+"
+`;
+
+exports[`value 1`] = `
+"Hi, ##UserName##!
+"
+`;
+
+exports[`value 2`] = `
+"Hi, [VALUE]!
+"
+`;

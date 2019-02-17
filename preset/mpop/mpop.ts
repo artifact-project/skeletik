@@ -32,16 +32,20 @@ function getPos(lex: Lexer, offset = 0): Pos {
 	return [lex.line, lex.column + offset];
 }
 
-function getLoc(lex: Lexer) {
-	const loc = [lex.line, lex.column];
-	return {start: loc, end: loc}
-}
-
-const KEYWORDS: {[name: string]: boolean} = {
+const KEYWORDS: {[name: string]: boolean | string} = {
 	'IF': true,
+	'IFDEF': true,
+	'IFNOT': true,
+	'IFNOTDEF': true,
 	'ELSE': true,
 	'ELSEIF': true,
-	'INCLUDE': true,
+	'ELSEIFDEF': true,
+	'ELSEIFNOT': true,
+	'ELSEIFNOTDEF': true,
+	'INCLUDE': 'shorty',
+	'FOR': true,
+	'CONTINUE': 'shorty',
+	'BREAK': 'shorty',
 };
 
 const OPERANDS = {
@@ -57,41 +61,75 @@ const PARENTHESES = {
 const C_LT = charCode('<');
 const C_GT = charCode('>');
 const C_HASH = charCode('#');
+const C_ACCENT = charCode('!');
 const C_MINUS = charCode('-');
+const C_SPACE = charCode(' ');
 
 let expr = '';
 let isClose = false;
 let openParentheses = 0;
 let startPos: Pos;
 
+function addText(lex: Lexer, bone: Bone, trim?: boolean) {
+	const token = lex.takeToken();
+	const len = token.length;
+
+	if (!len) {
+		return;
+	}
+
+	if (bone.last && bone.last.type === '#text') {
+		bone.last.raw.value += token;
+		// bone.last.raw.loc.end = getPos(lex, 0);
+	} else {
+		bone.add(new Bone('#text', {
+			// loc: {start: getPos(lex, -len + 1), end: null},
+			value: token,
+		}));
+	}
+
+	return bone.last;
+}
+
+
 export const mpop = skeletik({
 	'$ws': [' '],
-	'$name': ['A-Z', 'a-z', '_', '0-9'],
+	'$name': ['A-Z', 'a-z', '_', '0-9', '/'],
 	'$cmd': ['A-Z'],
-	'$start_expr': ['A-Z', 'a-z'],
-	'$expr': ['A-Z', 'a-z', '_', '0-9'],
+	'$start_expr': ['!', 'A-Z', 'a-z', '0-9'],
+	'$expr': ['A-Z', 'a-z', '_', '0-9', '!'],
 }, {
 	'': {
-		__events: {
-			leave: (lex) => {
-				if (lex.code === C_LT || lex.code === C_HASH) {
-					startPos = getPos(lex);
-				}
-			},
+		// __events: {
+		// 	leave: (lex) => {
+		// 		if (lex.code === C_LT || lex.code === C_HASH) {
+		// 			startPos = getPos(lex);
+		// 		}
+		// 	},
+		// },
+
+		'<': (lex, bone) => {
+			// <`!--`
+			if (lex.peek(+1) === C_ACCENT && lex.peek(+2) === C_MINUS && lex.peek(+3)) {
+				addText(lex, bone);
+				lex.skipNext(3);
+				return 'START_COMMENT';
+			} else {
+				return '->';
+			}
 		},
 
-		'<': 'AWAIT_COMMENT',
-		'#': 'AWAIT_MPOP_EXPR',
+		'#': (lex, bone) => {
+			if (lex.peek(+1) === C_HASH && lex.range.$expr(lex.peek(+2))) {
+				addText(lex, bone);
+				lex.skipNext(1);
+				return 'AWAIT_FUNC_OR_VALUE';
+			} else {
+				return '->';
+			}
+		},
+
 		'': '->',
-	},
-
-	'AWAIT_COMMENT': {
-		'': createSeq('!--', 'START_COMMENT'),
-	},
-
-	'AWAIT_MPOP_EXPR': {
-		'#': 'AWAIT_FUNC_OR_VALUE',
-		'': '',
 	},
 
 	'AWAIT_FUNC_OR_VALUE': {
@@ -102,8 +140,11 @@ export const mpop = skeletik({
 			if (token === 'SetVars') {
 				return 'SET_VARS:NAME';
 			} else {
-				return [bone.add('FUNC', {
-					loc: getLoc(lex),
+				return [bone.add('CALL', {
+					// loc: {
+					// 	start: startPos,
+					// 	end: null,
+					// },
 					name: token,
 					args: [],
 				}).last, 'FUNC:ARGS'];
@@ -112,10 +153,10 @@ export const mpop = skeletik({
 		'#': (lex, bone) => {
 			if (lex.peek(+1) === C_HASH) {
 				bone.add('VALUE', {
-					loc: {
-						start: startPos,
-						end: getPos(lex, 2),
-					},
+					// loc: {
+					// 	start: startPos,
+					// 	end: getPos(lex, 2),
+					// },
 					name: lex.getToken(),
 				});
 				lex.skipNext(1);
@@ -141,12 +182,19 @@ export const mpop = skeletik({
 		'$cmd': '->', // continue
 		' '(lex: Lexer, bone: Bone) {
 			const token = lex.getToken().replace(' ', '');
+			const isLikeIF = /^IF/.test(token);
+			const isLikeElse = /^ELSE/.test(token);
+			const kwType = KEYWORDS[token]
 
-			if (KEYWORDS[token]) {
+			if (kwType) {
 				if (isClose) {
 					isClose = false;
 
-					if (token === 'IF') {
+					if (isLikeIF) {
+						bone = bone.parent;
+					}
+
+					while (/^ELSE/.test(bone.type)) {
 						bone = bone.parent;
 					}
 
@@ -157,19 +205,19 @@ export const mpop = skeletik({
 					}
 				}
 
-				if (token === 'ELSE' || token === 'ELSEIF') {
+				if (isLikeElse) {
 					bone = bone.parent;
-					bone.raw.alternate = new Bone(token);
+					bone.raw.alternate = new Bone(token, {});
 					bone.raw.alternate.parent = bone;
-					return [bone.raw.alternate, token === 'ELSE' ? '' : 'KW_IF'];
+
+					return [bone.raw.alternate, 'KW_ELSE'];
 				}
 
 				return [
-					bone.add(token, {loc: {
-						start: startPos,
-						end: null,
-					}}).last,
-					`KW_${token}`,
+					bone.add(token, {
+						// loc: {start: startPos, end: null},
+					}).last,
+					isLikeIF ? 'KW_IF' : (kwType === true ? `KW_${token}` : `KW_TYPE_${kwType.toUpperCase()}`),
 				];
 			}
 		},
@@ -178,8 +226,8 @@ export const mpop = skeletik({
 
 	'SET_VARS:NAME': {
 		'=': (lex, bone) => {
-			return [bone.add('SET_VARS', {
-				loc: {start: startPos, end: startPos},
+			return [bone.add('SET', {
+				// loc: {start: startPos, end: startPos},
 				name: lex.getToken(),
 			}).last, 'SET_VARS:VALUE'];
 		},
@@ -189,7 +237,7 @@ export const mpop = skeletik({
 	'SET_VARS:VALUE': {
 		')': (lex, bone) => {
 			bone.raw.value = lex.getToken();
-			bone.raw.loc.end = getPos(lex, 3);
+			// bone.raw.loc.end = getPos(lex, 3);
 			lex.skipNext(2);
 			return bone.parent;
 		},
@@ -199,10 +247,22 @@ export const mpop = skeletik({
 	'FUNC:ARGS': {
 		')': (lex, bone) => {
 			bone.raw.args = [lex.getToken()];
+			// bone.raw.loc.end = getPos(lex, 3);
 			lex.skipNext(2);
 			return bone.parent;
 		},
 		'': '->',
+	},
+
+	'KW_FOR': {
+		'$start_expr': '!EXPR',
+		'': fail,
+	},
+
+	'KW_FOR_EXPR': {
+		'': (_, bone: Bone) => {
+			bone.raw.data = expr;
+		},
 	},
 
 	'KW_IF': {
@@ -220,22 +280,54 @@ export const mpop = skeletik({
 		},
 	},
 
-	'KW_INCLUDE': {
-		'': createSeq('-->', '>KW_INCLUDE_END', true),
+	'KW_TYPE_SHORTY': {
+		'': createSeq('-->', '>KW_TYPE_SHORTY_END', true),
 	},
 
-	'KW_INCLUDE_END': {
+	'KW_TYPE_SHORTY_END': {
 		'>': (lex, bone) => {
-			bone.raw.src = lex.getToken(0, -2).trim();
-			bone.raw.loc.end = getPos(lex, 1);
+			const token = lex.getToken(0, -2).trim();
+			bone.raw.value = token;
+			// bone.raw.loc.end = getPos(lex, 1);
 			return bone.parent;
 		},
 	},
 
+	'KW_ELSE': {
+		'$start_expr': (lex, bone) => {
+			const token = lex.getToken();
+
+			if (/^ *IF(NOT)?(DEF)? $/.test(token)) {
+				bone.type += ` ${token.trim()}`;
+				return '>KW_IF';
+			} else if (/^ELSEIF/.test(bone.type)) {
+				expr = '';
+				return '>KW_IF';
+			} else if ('IFNOTDEF'.substr(0, token.length) === token || 'IFDEF'.substr(0, token.length) === token) {
+				return '->'
+			} else {
+				console.log(token);
+				return 'fail';
+			}
+		},
+		'-': (lex) => {
+			if (lex.peek(+1) === C_MINUS && lex.peek(+2) === C_GT) {
+				lex.skipNext(2);
+				return '';
+			}
+		},
+	},
+
 	'KW_AWAIT_END': {
-		'>': (lex, bone) => {
-			bone.raw.loc.end = getPos(lex, 1);
-			return bone.parent;
+		'-': (lex, bone) => {
+			if (lex.peek(+1) === C_MINUS && lex.peek(+2) === C_GT) {
+				const token = lex.getToken().trim();
+
+				token && (bone.raw.ending = token);
+				lex.skipNext(2);
+				// bone.raw.loc.end = getPos(lex, 1);
+				return bone.parent;
+			}
 		},
 	},
 
@@ -261,6 +353,7 @@ export const mpop = skeletik({
 
 			if (code === C_MINUS && lex.peek(+1) === C_MINUS && lex.peek(+2) === C_GT) {
 				expr = lex.getToken().trim();
+				lex.skipNext(1);
 				return `${lex.prevState}_EXPR`;
 			}
 
@@ -270,7 +363,10 @@ export const mpop = skeletik({
 }, {
 	onend(lex: Lexer, bone: Bone, root) {
 		if (bone !== root) {
-			lex.error(`"${bone.type}" is not closed`);
+			lex.error(`Parsing failed, "${bone.type}" is not closed, state: "${lex.prevState}" -> "${lex.state}"`);
 		}
+
+		const text = addText(lex, bone);
+		text.raw.value = text.raw.value.replace(/[\r\n]+$/, '\n');
 	}
 });

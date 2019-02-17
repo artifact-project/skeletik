@@ -33,3 +33,6 @@ typings
 
 # IDE
 .idea
+
+# Local data
+preset/mpop/configs
