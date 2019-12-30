@@ -1,4 +1,4 @@
-import skeletik, {charCode, Bone, Lexer} from '../../src/skeletik/skeletik';
+import {skeletikFactory as skeletik, charCode, Bone, Lexer} from '../../src/skeletik/skeletik';
 
 export type Pos = [number, number];
 export type Loc = {start: Pos; end: Pos};

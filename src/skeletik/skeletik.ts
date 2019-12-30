@@ -1,30 +1,30 @@
 export type BoneConstructor = {new(name, raw): IBone};
 
 export interface IBone {
-	type:string;
-	raw:any;
-	length:number;
-	nodes:IBone[];
-	parent:IBone;
-	first:IBone;
-	last:IBone;
-	prev:IBone;
-	next:IBone;
+	type: string;
+	raw: any;
+	length: number;
+	nodes: IBone[];
+	parent: IBone;
+	first: IBone;
+	last: IBone;
+	prev: IBone;
+	next: IBone;
 }
 
 export interface SkeletikRanges {
-	[index:string]:string[];
+	[index:string]: string[];
 }
 
 export interface SkeletikStates {
-	[index:string]:SkeletikState
+	[index:string]: SkeletikState
 }
 
-export type SkeletikStateHandle = (lex:Lexer, bone:Bone) => void|string|Bone|[Bone,string]
-export type SkeletikListener = (lex:Lexer, bone:Bone, rootBone?: Bone) => void|boolean|Bone
+export type SkeletikStateHandle = (lex: Lexer, bone: Bone) => void | string | Bone | [Bone, string];
+export type SkeletikListener = (lex: Lexer, bone: Bone, rootBone?: Bone) => void | boolean | Bone;
 
 export interface SkeletikState {
-	[index:string]:string | SkeletikStateHandle | SkeletikStateEvents;
+	[index:string]: string | SkeletikStateHandle | SkeletikStateEvents;
 }
 
 export interface SkeletikStateEvents {
@@ -33,15 +33,15 @@ export interface SkeletikStateEvents {
 }
 
 export interface SkeletikOptions {
-	onstart?:SkeletikListener;
-	onindent?:SkeletikListener;
-	onpeek?:SkeletikListener;
-	onend?:SkeletikListener;
+	onstart?: SkeletikListener;
+	onindent?: SkeletikListener;
+	onpeek?: SkeletikListener;
+	onend?: SkeletikListener;
 }
 
 export interface SkeletikParser {
-	(input:string):Bone;
-	capture:(lex:Lexer, options?:SkeletikOptions, root?:Bone) => Bone;
+	(input: string): Bone;
+	capture: (lex: Lexer, options?: SkeletikOptions, root?: Bone) => Bone;
 }
 
 export interface LexerIndent {
@@ -50,13 +50,13 @@ export interface LexerIndent {
 }
 
 export class LexerSyntaxError extends SyntaxError {
-	public bone:Bone;
-	public chr:string;
-	public token:string;
-	public line:number;
-	public column:number;
-	public details:string;
-	public pretty:string;
+	public bone: Bone;
+	public chr: string;
+	public token: string;
+	public line: number;
+	public column: number;
+	public details: string;
+	public pretty: string;
 
 	constructor(public message:string) {
 		super(message);
@@ -68,24 +68,24 @@ export class LexerSyntaxError extends SyntaxError {
  * @param input
  */
 export class Lexer {
-	public state:string = '';
-	public prevState:string = '';
-	public nextState:string = '';
-	public line:number = 1;
-	public column:number = 1;
-	public idx:number = 0;
-	public lastIdx:number = 0;
-	public indent:LexerIndent = {tab: 0, space: 0};
-	public code:number = null;
-	public prevCode:number = null;
-	public length:number;
-	public skip:number;
+	public state: string = '';
+	public prevState: string = '';
+	public nextState: string = '';
+	public line: number = 1;
+	public column: number = 1;
+	public idx: number = 0;
+	public lastIdx: number = 0;
+	public indent: LexerIndent = {tab: 0, space: 0};
+	public code: number = null;
+	public prevCode: number = null;
+	public length: number;
+	public skip: number;
 
-	constructor(public input:string, public range?: any) {
+	constructor(public input: string, public range?: any) {
 		this.length = input.length;
 	}
 
-	getToken(leftOffset?:number, rightOffset?:number):string {
+	getToken(leftOffset?: number, rightOffset?: number): string {
 		return this.input.substring(this.lastIdx + (leftOffset | 0), this.idx + (rightOffset | 0));
 	}
 
@@ -94,22 +94,22 @@ export class Lexer {
 		return this;
 	}
 
-	takeToken(leftOffset?:number, rightOffset?:number):string {
+	takeToken(leftOffset?: number, rightOffset?: number): string {
 		const token:string = this.getToken(leftOffset, rightOffset);
 		this.lastIdx = this.idx;
 		return token;
 	}
 
-	getChar():string {
+	getChar(): string {
 		return String.fromCharCode(this.code); // todo: vs. charAt()
 	}
 
-	takeChar():string {
+	takeChar(): string {
 		this.lastIdx = this.idx;
 		return this.getChar();
 	}
 
-	peek(offset: number):number {
+	peek(offset: number): number {
 		return offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset);
 	}
 
@@ -117,7 +117,7 @@ export class Lexer {
 		return String.fromCharCode(offset === 0 ? this.code : this.input.charCodeAt(this.idx + offset));
 	}
 
-	error(message:string, bone?:Bone, columnOffset?:number):LexerSyntaxError {
+	error(message: string, bone?: Bone, columnOffset?: number): LexerSyntaxError {
 		const error = new LexerSyntaxError(message);
 
 		error.bone = bone;
@@ -128,13 +128,13 @@ export class Lexer {
 		error.details = this.input.split('\n')[error.line - 1].substr(0, error.column);
 		error.pretty = [
 			error.details.replace(/\t/g, ' '),
-			new Array(error.column).join('-') + '^'
+			new Array(error.column).join('-') + '^',
 		].join('\n');
 
 		throw error;
 	}
 
-	skipNext(length:number) {
+	skipNext(length: number) {
 		this.skip = length;
 	}
 }
@@ -146,22 +146,22 @@ export class Lexer {
  * @param [raw]
  */
 export class Bone implements IBone {
-	public length:number = 0;
-	public nodes:Bone[] = [];
+	public length: number = 0;
+	public nodes: Bone[] = [];
 
-	public parent:Bone;
+	public parent: Bone;
 
-	public first:Bone;
-	public last:Bone;
+	public first: Bone;
+	public last: Bone;
 
-	public prev:Bone;
-	public next:Bone;
+	public prev: Bone;
+	public next: Bone;
 
-	constructor(public type:string, public raw:any = null) {
+	constructor(public type: string, public raw: any = null) {
 	}
 
-	add(bone:Bone):this;
-	add(type:string, raw?:any):this;
+	add(bone: Bone): this;
+	add(type: string, raw?: any): this;
 	add(type?, raw?) {
 		const bone = typeof type === 'string' ? new Bone(type, raw) : type;
 
@@ -194,21 +194,21 @@ export class Bone implements IBone {
  * @param ranges
  * @param spec
  */
-class Skeletik {
-	public _ranges:any;
-	private _spec:any;
-	private _states:any;
-	private _vars:any;
-	private _events:any;
-	private _fn:Function;
+export class Skeletik {
+	public _ranges: any;
+	private _spec: any;
+	private _states: any;
+	private _vars: any;
+	private _events: any;
+	private _fn: Function;
 
-	constructor(ranges:SkeletikRanges, spec:SkeletikStates) {
+	constructor(ranges: SkeletikRanges, spec: SkeletikStates) {
 		this.ranges(ranges);
 		this.spec(spec);
 		this._fn = this.compile();
 	}
 
-	exec(lex:Lexer, root:Bone, options:SkeletikOptions):Bone {
+	exec(lex: Lexer, root: Bone, options: SkeletikOptions): Bone {
 		return this._fn(lex, root, options);
 	}
 
@@ -451,7 +451,7 @@ class Skeletik {
 }
 
 
-function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:SkeletikOptions):SkeletikParser {
+export function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:SkeletikOptions):SkeletikParser {
 	options = options || {};
 
 	const parser = new Skeletik(ranges, spec);
@@ -504,10 +504,3 @@ function skeletikFactory(ranges:SkeletikRanges, spec:SkeletikStates, options?:Sk
 export function charCode(chr: string): number {
 	return chr.charCodeAt(0);
 }
-
-// Export
-skeletikFactory['Bone'] = Bone;
-skeletikFactory['preset'] = {};
-skeletikFactory['version'] = '0.5.0';
-
-export default skeletikFactory;

@@ -1,6 +1,6 @@
-import skeletik from './skeletik';
+import { skeletikFactory as skeletik } from './skeletik';
 
-it('ranges:fail', () => {
+it('ranges: fail', () => {
 	try {
 		skeletik({'-': ['1']}, {});
 	} catch (err) {
@@ -14,16 +14,17 @@ it('a + b', () => {
 	}, {
 		'': {
 			'$e': '!expr',
-			'+': function (lex, bone) {
+			'+': (lex, bone) => {
 				bone.add('#s', lex.takeChar());
 			}
 		},
+
 		'expr': {
-			'': function (lex, bone) {
+			'': (lex, bone) => {
 				bone.add('#e', lex.takeToken());
 				return '>';
-			}
-		}
+			},
+		},
 	});
 
 	expect(JSON.stringify(parser('a + b'), null, 2)).toBe(JSON.stringify({
